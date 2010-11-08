@@ -1,3 +1,5 @@
+.PHONY: clean
+
 DEBUG = -Wall -g
 OPT = ${DEBUG}
 
