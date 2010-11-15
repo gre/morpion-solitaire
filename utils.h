@@ -4,4 +4,6 @@
  * Utils module
  */
 
+int util_abs(int);
+
 #endif

@@ -3,12 +3,13 @@
 /**
  * User Interface module
  */
+#include "game.h"
 
 typedef enum {
-  NONE=0, /* Action invalid (no action) */
-  LEFT, RIGHT, TOP, BOTTOM, /* arrow for navigation */
-  VALID, /* Valid action */
-  CANCEL /* Cancel a state (ex: quit the game) */
+  Action_NONE=0, /* Action invalid (no action) */
+  Action_LEFT, Action_RIGHT, Action_UP, Action_DOWN, /* arrow for navigation */
+  Action_VALID, /* Valid action */
+  Action_CANCEL /* Cancel a state (ex: quit the game) */
 } Action;
 
 /**
@@ -19,20 +20,24 @@ typedef enum {
  */
 extern Action ui_getAction();
 
+extern void ui_refresh();
+
+extern void ui_printMessage(char* str);
 
 extern void ui_init();
 
 extern void ui_close();
 
-extern void ui_onGameStart();
+extern void ui_onGameStart(Game*);
 
-extern void ui_onGameResume();
+extern void ui_onGameResume(Game*);
 
-extern void ui_onGameEnd();
+extern void ui_onGameEnd(Game*);
 
+extern void ui_updateGrid(Game*);
 
-extern void ui_updateGrid();
-
+extern void ui_confirmExit();
+extern void ui_cleanMessage();
 
 
 #endif
