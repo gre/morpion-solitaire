@@ -8,6 +8,9 @@
 #include "export.h"
 
 int main(int argc, char* argv[]) {
+  int count;
+  char buf[100];
+  
   Action action = Action_NONE;
   int end = FALSE;
   int cursorChanged;
@@ -49,13 +52,19 @@ int main(int argc, char* argv[]) {
       }
       else {
         if(!game_isOccupied(game, cursor)) {
-          game_emptySelection(game);
-          game_occupyCase(game, cursor);
+          count = game_countOccupiedCases(game, select, cursor);
+          sprintf(buf, "%d", count);
+          ui_printMessage(buf);
+          if(game_consumableCases(game, select, cursor) && count==LINE_LENGTH-1) {
+            game_emptySelection(game);
+            game_occupyCase(game, cursor);
+            game_consumeCases(game, select, cursor);
+          }
         }
         else {
           select = game_getSelect(game);
           if(pointExists(select)) { // game has select
-            if(game_consumableCases(game, select, cursor)) {
+            if(game_consumableCases(game, select, cursor) && game_countOccupiedCases(game, select, cursor)==LINE_LENGTH) {
               ui_printMessage("valid cases");
               game_consumeCases(game, select, cursor);
             }
@@ -72,8 +81,14 @@ int main(int argc, char* argv[]) {
     }
     
     if(action==Action_CANCEL) {
-      quitRequest = TRUE;
-      ui_confirmExit();
+      if(pointExists(game_getSelect(game))) {
+        game_emptySelection(game);
+        ui_updateGrid(game);
+      }
+      else {
+        quitRequest = TRUE;
+        ui_confirmExit();
+      }
     }
     else {
       quitRequest = FALSE;
