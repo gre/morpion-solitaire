@@ -19,23 +19,39 @@
 char buffer[BUFFER_SIZE];
 
 enum { 
-  CLR_DEFAULT=1, CLR_CASE, CLR_CASE_CONSUMED, CLR_CASE_SELECTED
+  CLR_DEFAULT=1, CLR_CASE, CLR_CASE_SELECTED, CLR_CASE_EMPTY_SELECTED, CLR_LINES,
+  CLR_MESSAGE, CLR_MESSAGE_ERROR, CLR_MESSAGE_SUCCESS
 };
 
 WINDOW* win_grid;
 WINDOW* win_message;
 
+
+extern void setColor(WINDOW* win, int color) {
+  wattron(win, COLOR_PAIR(color));
+}
+
 extern void ui_cleanMessage() {
   mvwhline(win_message, 1, 1, ' ', WIN_MESSAGE_WIDTH-2);
 }
-extern void ui_printMessage(char* str) {
+static void ui_printMessage(char* str) {
   ui_cleanMessage();
   mvwprintw(win_message, 1, (WIN_MESSAGE_WIDTH-strlen(str))/2, str);
 }
 
-static void setColor(WINDOW* win, int color) {
-  wattron(win, COLOR_PAIR(color));
+extern void ui_printMessage_info(char* str) {
+  setColor(win_message, CLR_MESSAGE);
+  ui_printMessage(str);
 }
+extern void ui_printMessage_success(char* str) {
+  setColor(win_message, CLR_MESSAGE_SUCCESS);
+  ui_printMessage(str);
+}
+extern void ui_printMessage_error(char* str) {
+  setColor(win_message, CLR_MESSAGE_ERROR);
+  ui_printMessage(str);
+}
+
 static Point toGraphicCoord(Point p) {
   Point newP;
   newP.x = 2+GRAPHIC_CASE_W*p.x;
@@ -43,32 +59,50 @@ static Point toGraphicCoord(Point p) {
   return newP;
 }
 
-static void drawGrid(Grid* grid) {
-  Point p;
+static void drawGrid(Game* game) {
+  int currentChar;
+  int i, j, x, y;
+  int length;
+  Point p, p2;
   Point graphicPoint;
   CaseType caseType;
+  Grid* grid = game_getGrid(game);
+  Line* lines = game_getLines(game, &length);
+  Line line;
+  
   for(p.y=0; p.y<GRID_SIZE; ++p.y) {
     for(p.x=0; p.x<GRID_SIZE; ++p.x) {
       caseType = grid->grid[p.x][p.y];
-      if(pointEquals(p, grid->cursor)) {
+      if(pointEquals(p, grid->cursor)) 
         wattron(win_grid, A_REVERSE);
-      }
-      else {
+      else 
         wattroff(win_grid, A_REVERSE);
-      }
-      if(pointEquals(p, grid->select)) {
-        setColor(win_grid, CLR_CASE_SELECTED);
-      }
-      else {
-        if(caseType == CASE_CONSUMED)
-          setColor(win_grid, CLR_CASE_CONSUMED);
-        else
-          setColor(win_grid, CLR_CASE);
-      }
+      setColor(win_grid, (pointEquals(p, grid->select)) ? (caseType == CASE_EMPTY ? CLR_CASE_EMPTY_SELECTED : CLR_CASE_SELECTED) : CLR_CASE);
     
       graphicPoint = toGraphicCoord(p);
-      
-      mvwprintw(win_grid, graphicPoint.y+1, graphicPoint.x+2, caseType == CASE_EMPTY ? " " : (caseType == CASE_OCCUPIED ? "*" : "o"));
+      mvwprintw(win_grid, graphicPoint.y+1, graphicPoint.x+2, caseType == CASE_EMPTY ? " " : "o");
+    }
+  }
+  
+  setColor(win_grid, CLR_LINES);
+  for(i=0; i<length; ++i) {
+    line = lines[i];
+    for(j=0; j<LINE_LENGTH-1; ++j) {
+      p = toGraphicCoord(line.points[j]);
+      p2 = toGraphicCoord(line.points[j+1]);
+      x = (p.x+p2.x)/2 + 2;
+      y = (p.y+p2.y)/2 + 1;
+      if(p.x==p2.x)
+        mvwprintw(win_grid, y, x, ":");
+      else if(p.y==p2.y)
+        mvwprintw(win_grid, y, x-1, "---");
+      else {
+        // game_hasCollinearAndContainsTwo(game, line.points[j], line.points[j+1])
+        if((p.y<p2.y && p.x<p2.x) || (p.y>p2.y && p.x>p2.x))
+          mvwprintw(win_grid, y, x, currentChar=='/'||currentChar=='X' ? "X" : "\\");
+        else
+          mvwprintw(win_grid, y, x-1, currentChar=='\\'||currentChar=='X' ? "X" :"/");
+      }
     }
   }
 }
@@ -125,9 +159,14 @@ extern void ui_init(Game* game) {
   curs_set(0);
   start_color();
   init_pair(CLR_DEFAULT, COLOR_WHITE, COLOR_BLACK);
+  init_pair(CLR_LINES, COLOR_BLUE, COLOR_BLACK);
   init_pair(CLR_CASE, COLOR_WHITE, COLOR_BLACK);
-  init_pair(CLR_CASE_CONSUMED, COLOR_GREEN, COLOR_BLACK);
   init_pair(CLR_CASE_SELECTED, COLOR_GREEN, COLOR_BLACK);
+  init_pair(CLR_CASE_EMPTY_SELECTED, COLOR_YELLOW, COLOR_GREEN);
+  init_pair(CLR_MESSAGE, COLOR_WHITE, COLOR_BLACK);
+  init_pair(CLR_MESSAGE_ERROR, COLOR_RED, COLOR_BLACK);
+  init_pair(CLR_MESSAGE_SUCCESS, COLOR_GREEN, COLOR_BLACK);
+  
   box(win_grid, 0, 0);
   box(win_message, 0, 0);
   refresh();
@@ -135,7 +174,7 @@ extern void ui_init(Game* game) {
 }
 
 extern void ui_confirmExit() {
-  ui_printMessage("Quit ? [y/n]");
+  ui_printMessage_info("Quit ? [y/n]");
 }
 
 extern void ui_onGameStart(Game* game) {
@@ -150,7 +189,7 @@ extern void ui_onGameEnd(Game* game) {
 }
 
 extern void ui_updateGrid(Game* game) {
-  drawGrid(game_getGrid(game));
+  drawGrid(game);
 }
 
 extern void ui_close(Game* game) {

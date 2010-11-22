@@ -9,6 +9,7 @@
 
 int main(int argc, char* argv[]) {
   int count;
+  int gamePoints = 0;
   char buf[100];
   
   Action action = Action_NONE;
@@ -51,31 +52,27 @@ int main(int argc, char* argv[]) {
         end = TRUE;
       }
       else {
-        if(!game_isOccupied(game, cursor)) {
+        select = game_getSelect(game);
+        game_selectCase(game, cursor);
+        
           count = game_countOccupiedCases(game, select, cursor);
           sprintf(buf, "%d", count);
-          ui_printMessage(buf);
-          if(game_consumableCases(game, select, cursor) && count==LINE_LENGTH-1) {
-            game_emptySelection(game);
-            game_occupyCase(game, cursor);
+          ui_printMessage_info(buf);
+          
+          if((count==LINE_LENGTH || count==LINE_LENGTH-1)
+          && game_consumableCases(game, select, cursor)) {
+            gamePoints += (count==LINE_LENGTH) ? POINTS_TRACE_LINE : POINTS_PUT_POINT;
+            game_occupyCases(game, select, cursor);
             game_consumeCases(game, select, cursor);
+            game_emptySelection(game);
+            sprintf(buf, "Total points: %d", gamePoints);
+            ui_printMessage_success(buf);
           }
-        }
-        else {
-          select = game_getSelect(game);
-          if(pointExists(select)) { // game has select
-            if(game_consumableCases(game, select, cursor) && game_countOccupiedCases(game, select, cursor)==LINE_LENGTH) {
-              ui_printMessage("valid cases");
-              game_consumeCases(game, select, cursor);
-            }
-            else {
-              ui_printMessage("invalid selected cases");
-            }
+          else if(pointExists(select)) {
+            ui_printMessage_error("invalid action");
+            game_emptySelection(game);
           }
-          else {
-            game_selectCase(game, cursor);
-          }
-        }
+          
         ui_updateGrid(game);
       }
     }

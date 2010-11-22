@@ -22,7 +22,9 @@ extern Action ui_getAction();
 
 extern void ui_refresh();
 
-extern void ui_printMessage(char* str);
+extern void ui_printMessage_info(char* str);
+extern void ui_printMessage_error(char* str);
+extern void ui_printMessage_success(char* str);
 
 extern void ui_init();
 

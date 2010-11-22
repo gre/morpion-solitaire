@@ -8,8 +8,7 @@
 
 typedef enum {
   CASE_EMPTY=0,
-  CASE_OCCUPIED,
-  CASE_CONSUMED
+  CASE_OCCUPIED
 } CaseType;
 
 typedef struct _Point {
@@ -42,14 +41,18 @@ extern Game* game_startWithLines(Line lines[]);
 extern void game_end(Game*);
 
 
+extern int game_hasCollinearAndContainsTwo(Game* game, Point from, Point to);
+
 extern Line* game_getLines(Game* game, int* length);
 
+extern void game_addLine(Game* game, Line l);
 extern Grid* game_getGrid(Game*);
 extern Point game_getCursor(Game*);
 extern int game_isOccupied(Game* game, Point p);
 extern int game_countOccupiedCases(Game* game, Point from, Point to);
 extern Point game_getSelect(Game* game);
 extern void game_occupyCase(Game*, Point);
+extern void game_occupyCases(Game*, Point from, Point to);
 extern void game_selectCase(Game*, Point);
 extern void game_emptySelection(Game* game);
 extern void game_setCursor(Game*, Point);
