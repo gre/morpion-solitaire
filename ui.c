@@ -13,8 +13,12 @@
 #define GRAPHIC_CASE_H 2
 #define GRAPHIC_CASE_W 4
 
+#define GRID_TOP 0
+
 #define WIN_MESSAGE_WIDTH (4+GRAPHIC_CASE_W*GRID_SIZE)
-#define  WIN_MESSAGE_TOP (4+(GRAPHIC_CASE_H*GRID_SIZE))
+#define  WIN_MESSAGE_TOP (GRID_TOP+2+(GRAPHIC_CASE_H*GRID_SIZE))
+
+#define GRID_LEFT ((COLS-WIN_MESSAGE_WIDTH)/2)
 
 char buffer[BUFFER_SIZE];
 
@@ -25,7 +29,6 @@ enum {
 
 WINDOW* win_grid;
 WINDOW* win_message;
-
 
 extern void setColor(WINDOW* win, int color) {
   wattron(win, COLOR_PAIR(color));
@@ -59,30 +62,13 @@ static Point toGraphicCoord(Point p) {
   return newP;
 }
 
-static void drawGrid(Game* game) {
-  int currentChar;
-  int i, j, x, y;
+static void drawLines(Game* game) {
+  Point a, b, p, p2;
+  int hasReverseDiag;
+  int x, y, i, j;
   int length;
-  Point p, p2;
-  Point graphicPoint;
-  CaseType caseType;
-  Grid* grid = game_getGrid(game);
-  Line* lines = game_getLines(game, &length);
   Line line;
-  
-  for(p.y=0; p.y<GRID_SIZE; ++p.y) {
-    for(p.x=0; p.x<GRID_SIZE; ++p.x) {
-      caseType = grid->grid[p.x][p.y];
-      if(pointEquals(p, grid->cursor)) 
-        wattron(win_grid, A_REVERSE);
-      else 
-        wattroff(win_grid, A_REVERSE);
-      setColor(win_grid, (pointEquals(p, grid->select)) ? (caseType == CASE_EMPTY ? CLR_CASE_EMPTY_SELECTED : CLR_CASE_SELECTED) : CLR_CASE);
-    
-      graphicPoint = toGraphicCoord(p);
-      mvwprintw(win_grid, graphicPoint.y+1, graphicPoint.x+2, caseType == CASE_EMPTY ? " " : "o");
-    }
-  }
+  Line* lines = game_getLines(game, &length);
   
   setColor(win_grid, CLR_LINES);
   for(i=0; i<length; ++i) {
@@ -97,14 +83,44 @@ static void drawGrid(Game* game) {
       else if(p.y==p2.y)
         mvwprintw(win_grid, y, x-1, "---");
       else {
-        // game_hasCollinearAndContainsTwo(game, line.points[j], line.points[j+1])
+        // compute a & b to be the reverse diagonal of p & p2
+        a = line.points[j];
+        b = line.points[j+1];
+        if(a.x<b.x){
+          a.x++; b.x--;
+        }
+        else {
+          a.x--; b.x++;
+        }
+        hasReverseDiag = game_hasCollinearAndContainsTwo(game, a, b);
         if((p.y<p2.y && p.x<p2.x) || (p.y>p2.y && p.x>p2.x))
-          mvwprintw(win_grid, y, x, currentChar=='/'||currentChar=='X' ? "X" : "\\");
+          mvwprintw(win_grid, y, x, hasReverseDiag ? "X" : "\\");
         else
-          mvwprintw(win_grid, y, x-1, currentChar=='\\'||currentChar=='X' ? "X" :"/");
+          mvwprintw(win_grid, y, x, hasReverseDiag ? "X" :"/");
       }
     }
   }
+}
+
+static void drawGrid(Game* game) {
+  Point p, graphicPoint;
+  CaseType caseType;
+  Grid* grid = game_getGrid(game);
+  
+  for(p.y=0; p.y<GRID_SIZE; ++p.y) {
+    for(p.x=0; p.x<GRID_SIZE; ++p.x) {
+      caseType = grid->grid[p.x][p.y];
+      if(pointEquals(p, grid->cursor)) 
+        wattron(win_grid, A_REVERSE);
+      else 
+        wattroff(win_grid, A_REVERSE);
+      setColor(win_grid, (pointEquals(p, grid->select)) ? (caseType == CASE_EMPTY ? CLR_CASE_EMPTY_SELECTED : CLR_CASE_SELECTED) : CLR_CASE);
+    
+      graphicPoint = toGraphicCoord(p);
+      mvwprintw(win_grid, graphicPoint.y+1, graphicPoint.x+2, caseType == CASE_EMPTY ? " " : "o");
+    }
+  }
+  drawLines(game);
 }
 
 extern void ui_refresh() {
@@ -117,20 +133,27 @@ extern Action ui_getAction() {
   int ch = wgetch(win_grid);
   switch(ch) {
     case KEY_LEFT:
+    case 'q':
       return Action_LEFT;
     
     case KEY_RIGHT:
+    case 'd':
       return Action_RIGHT;
     
     case KEY_UP:
+    case 'z':
       return Action_UP;
     
     case KEY_DOWN:
+    case 's':
       return Action_DOWN;
     
-    case 'y':
     case ENTER_KEY:
+    case ' ':
       return Action_VALID;
+    
+    case 'y':
+      return Action_YES;
     
     case ESCAPE_KEY:
       return Action_CANCEL;
@@ -152,8 +175,8 @@ extern void ui_init(Game* game) {
 	}
   cbreak();
   noecho();
-  win_grid = newwin(GRAPHIC_CASE_H*(GRID_SIZE+1), GRAPHIC_CASE_W*(GRID_SIZE+1), 2, 2);
-  win_message = newwin(3, WIN_MESSAGE_WIDTH, WIN_MESSAGE_TOP, 2);
+  win_grid = newwin(GRAPHIC_CASE_H*(GRID_SIZE+1), GRAPHIC_CASE_W*(GRID_SIZE+1), GRID_TOP, GRID_LEFT);
+  win_message = newwin(3, WIN_MESSAGE_WIDTH, WIN_MESSAGE_TOP, GRID_LEFT);
   keypad(win_grid, TRUE);
   keypad(win_message, TRUE);
   curs_set(0);

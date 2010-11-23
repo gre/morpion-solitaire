@@ -8,6 +8,7 @@
 typedef enum {
   Action_NONE=0, /* Action invalid (no action) */
   Action_LEFT, Action_RIGHT, Action_UP, Action_DOWN, /* arrow for navigation */
+  Action_YES,
   Action_VALID, /* Valid action */
   Action_CANCEL /* Cancel a state (ex: quit the game) */
 } Action;

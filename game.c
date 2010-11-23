@@ -51,7 +51,6 @@ extern Grid* game_getGrid(Game* game) {
 }
 
 extern Game* game_init(GameMode gameMode, int gumModeEnabled) {
-  Point p;
   Game* game = malloc(sizeof(Game));
   game->lines = 0;
   game->nlines = 0;
@@ -90,7 +89,7 @@ extern int game_pointsEquals(Point a, Point b) {
 
 extern int game_hasCollinearAndContainsTwo(Game* game, Point from, Point to) {
   Line l;
-  int i, j, k;
+  int i, j;
   int count;
   for(i=0; i < game->nlines; ++i) {
     l = game->lines[i];
