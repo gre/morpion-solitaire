@@ -137,13 +137,11 @@ static GameEndStatus runGame(Game* game) {
       count = game_countOccupiedCases(game, select, cursor);
       if((count==LINE_LENGTH || count==LINE_LENGTH-1)
       && game_consumableCases(game, select, cursor)) {
-        
-        game_computeAllPossibilities(game);
-        
         gamePoints += (count==LINE_LENGTH) ? POINTS_TRACE_LINE : POINTS_PUT_POINT;
         game_occupyCases(game, select, cursor);
         game_consumeCases(game, select, cursor);
         game_emptySelection(game);
+        countPossibilities = game_computeAllPossibilities(game);
         sprintf(buf, "Total points: %d", gamePoints);
         ui_printMessage_success(buf);
       }
@@ -174,8 +172,10 @@ static GameEndStatus runGame(Game* game) {
   
   ui_onGameEnd(game);
   
-  if(countPossibilities==0)
+  if(countPossibilities==0) {
+    ui_getAction();
     status = GES_FINISHED;
+  }
   else
     status = GES_INTERRUPT;
   return status;

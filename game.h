@@ -51,7 +51,7 @@ extern int game_hasCollinearAndContainsTwo(Line* lines, int nlines, Point from, 
 
 extern Line* game_getLines(Game* game, int* length);
 
-extern void game_computeAllPossibilities(Game* game);
+extern int game_computeAllPossibilities(Game* game);
 extern Line* game_getAllPossibilities(Game* game, int* length);
 
 extern void game_addLine(Game* game, Line l);

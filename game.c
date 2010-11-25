@@ -178,7 +178,7 @@ static int game_isPlayableLine(Game* game, Line line) {
     int count = _game_countOccupiedCases(game, line);
     return ((count==LINE_LENGTH || count==LINE_LENGTH-1) && !game_hasCollinearAndContains(game, line));
 }
-extern void game_computeAllPossibilities(Game* game) {
+extern int game_computeAllPossibilities(Game* game) {
   Line* lines = game->possibilities;
   Line line;
   int possibilities = 0;
@@ -206,7 +206,7 @@ extern void game_computeAllPossibilities(Game* game) {
       }
     }
   }
-  game->possibilities_length = possibilities;
+  return game->possibilities_length = possibilities;
 }
 extern Line* game_getAllPossibilities(Game* game, int* length) {
   *length = game->possibilities_length;

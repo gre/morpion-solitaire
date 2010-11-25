@@ -101,12 +101,32 @@ static void drawLines(Line* lines, int nlines) {
   }
 }
 
+static void cleanGrid() {
+  setColor(win_grid, CLR_DEFAULT);
+  int i, wLength = GRAPHIC_CASE_W*GRID_SIZE-2, hLength = GRAPHIC_CASE_H*GRID_SIZE-1;
+  for(i=1; i<hLength; ++i)
+    mvwhline(win_grid, i, 1, ' ', wLength);
+}
+
 static void drawGrid(Game* game) {
   Point p, graphicPoint;
   CaseType caseType;
   Grid* grid = game_getGrid(game);
-  int length;
-  Line* lines;
+  int length, i, j;
+  Line line, *lines;
+  int displayPossibilities = TRUE;
+  
+  cleanGrid();
+  
+  if(displayPossibilities) {
+    lines = game_getAllPossibilities(game, &length);
+    setColor(win_grid, CLR_LINES_PLAYABLE);
+    drawLines(lines, length);
+  }
+  
+  lines = game_getLines(game, &length);
+  setColor(win_grid, CLR_LINES);
+  drawLines(lines, length);
   
   for(p.y=0; p.y<GRID_SIZE; ++p.y) {
     for(p.x=0; p.x<GRID_SIZE; ++p.x) {
@@ -122,13 +142,27 @@ static void drawGrid(Game* game) {
     }
   }
   
-  lines = game_getAllPossibilities(game, &length);
-  setColor(win_grid, CLR_LINES_PLAYABLE);
-  drawLines(lines, length);
+  if(displayPossibilities) {
+    lines = game_getAllPossibilities(game, &length);
+    for(i=0; i<length; ++i) {
+      line = lines[i];
+      for(j=0; j<LINE_LENGTH; ++j) {
+        p = line.points[j];
+        graphicPoint = toGraphicCoord(p);
+        caseType = grid->grid[p.x][p.y];
+        if(caseType == CASE_EMPTY) {
+          if(pointEquals(p, grid->cursor)) 
+            wattron(win_grid, A_REVERSE);
+          else 
+            wattroff(win_grid, A_REVERSE);
+          setColor(win_grid, pointEquals(p, grid->select) ? CLR_CASE_SELECTED : CLR_LINES_PLAYABLE);
+          mvwprintw(win_grid, graphicPoint.y+1, graphicPoint.x+2, "*");
+        }
+      }
+    }
+  }
   
-  lines = game_getLines(game, &length);
-  setColor(win_grid, CLR_LINES);
-  drawLines(lines, length);
+  wattroff(win_grid, A_REVERSE);
 }
 
 extern void ui_refresh() {
@@ -190,11 +224,11 @@ extern void ui_init() {
   curs_set(0);
   start_color();
   init_pair(CLR_DEFAULT, COLOR_WHITE, COLOR_BLACK);
-  init_pair(CLR_LINES, COLOR_BLUE, COLOR_BLACK);
-  init_pair(CLR_LINES_PLAYABLE, COLOR_YELLOW, COLOR_BLACK);
+  init_pair(CLR_LINES, COLOR_YELLOW, COLOR_BLACK);
+  init_pair(CLR_LINES_PLAYABLE, COLOR_BLUE, COLOR_BLACK);
   init_pair(CLR_CASE, COLOR_WHITE, COLOR_BLACK);
   init_pair(CLR_CASE_SELECTED, COLOR_GREEN, COLOR_BLACK);
-  init_pair(CLR_CASE_EMPTY_SELECTED, COLOR_YELLOW, COLOR_GREEN);
+  init_pair(CLR_CASE_EMPTY_SELECTED, COLOR_BLUE, COLOR_GREEN);
   init_pair(CLR_MESSAGE, COLOR_WHITE, COLOR_BLACK);
   init_pair(CLR_MESSAGE_ERROR, COLOR_RED, COLOR_BLACK);
   init_pair(CLR_MESSAGE_SUCCESS, COLOR_GREEN, COLOR_BLACK);
