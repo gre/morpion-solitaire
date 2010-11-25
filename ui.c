@@ -15,15 +15,17 @@
 
 #define GRID_TOP 0
 
+#define MAX(x,y) ((x)>(y) ? (x) : (y))
+
 #define WIN_MESSAGE_WIDTH (4+GRAPHIC_CASE_W*GRID_SIZE)
 #define  WIN_MESSAGE_TOP (GRID_TOP+2+(GRAPHIC_CASE_H*GRID_SIZE))
 
-#define GRID_LEFT ((COLS-WIN_MESSAGE_WIDTH)/2)
+#define GRID_LEFT MAX((COLS-WIN_MESSAGE_WIDTH)/2, 0)
 
 char buffer[BUFFER_SIZE];
 
 enum { 
-  CLR_DEFAULT=1, CLR_CASE, CLR_CASE_SELECTED, CLR_CASE_EMPTY_SELECTED, CLR_LINES,
+  CLR_DEFAULT=1, CLR_CASE, CLR_CASE_SELECTED, CLR_CASE_EMPTY_SELECTED, CLR_LINES, CLR_LINES_PLAYABLE,
   CLR_MESSAGE, CLR_MESSAGE_ERROR, CLR_MESSAGE_SUCCESS
 };
 
@@ -62,16 +64,13 @@ static Point toGraphicCoord(Point p) {
   return newP;
 }
 
-static void drawLines(Game* game) {
+static void drawLines(Line* lines, int nlines) {
   Point a, b, p, p2;
   int hasReverseDiag;
   int x, y, i, j;
-  int length;
   Line line;
-  Line* lines = game_getLines(game, &length);
   
-  setColor(win_grid, CLR_LINES);
-  for(i=0; i<length; ++i) {
+  for(i=0; i<nlines; ++i) {
     line = lines[i];
     for(j=0; j<LINE_LENGTH-1; ++j) {
       p = toGraphicCoord(line.points[j]);
@@ -92,7 +91,7 @@ static void drawLines(Game* game) {
         else {
           a.x--; b.x++;
         }
-        hasReverseDiag = game_hasCollinearAndContainsTwo(game, a, b);
+        hasReverseDiag = game_hasCollinearAndContainsTwo(lines, nlines, a, b);
         if((p.y<p2.y && p.x<p2.x) || (p.y>p2.y && p.x>p2.x))
           mvwprintw(win_grid, y, x, hasReverseDiag ? "X" : "\\");
         else
@@ -106,6 +105,8 @@ static void drawGrid(Game* game) {
   Point p, graphicPoint;
   CaseType caseType;
   Grid* grid = game_getGrid(game);
+  int length;
+  Line* lines;
   
   for(p.y=0; p.y<GRID_SIZE; ++p.y) {
     for(p.x=0; p.x<GRID_SIZE; ++p.x) {
@@ -120,7 +121,14 @@ static void drawGrid(Game* game) {
       mvwprintw(win_grid, graphicPoint.y+1, graphicPoint.x+2, caseType == CASE_EMPTY ? " " : "o");
     }
   }
-  drawLines(game);
+  
+  lines = game_getAllPossibilities(game, &length);
+  setColor(win_grid, CLR_LINES_PLAYABLE);
+  drawLines(lines, length);
+  
+  lines = game_getLines(game, &length);
+  setColor(win_grid, CLR_LINES);
+  drawLines(lines, length);
 }
 
 extern void ui_refresh() {
@@ -165,7 +173,7 @@ extern Action ui_getAction() {
   return Action_NONE;
 }
 
-extern void ui_init(Game* game) {
+extern void ui_init() {
   initscr();
   ESCDELAY = 0;
   if(has_colors() == FALSE) {
@@ -183,6 +191,7 @@ extern void ui_init(Game* game) {
   start_color();
   init_pair(CLR_DEFAULT, COLOR_WHITE, COLOR_BLACK);
   init_pair(CLR_LINES, COLOR_BLUE, COLOR_BLACK);
+  init_pair(CLR_LINES_PLAYABLE, COLOR_YELLOW, COLOR_BLACK);
   init_pair(CLR_CASE, COLOR_WHITE, COLOR_BLACK);
   init_pair(CLR_CASE_SELECTED, COLOR_GREEN, COLOR_BLACK);
   init_pair(CLR_CASE_EMPTY_SELECTED, COLOR_YELLOW, COLOR_GREEN);

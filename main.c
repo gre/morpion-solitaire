@@ -11,7 +11,7 @@
  * TODO
  * command line
  *  ./morpion --load [<path to a game file>]
- *  ./morpion --new
+ *  ./morpion --new <username>
  *  ./morpion --help
  *  ./morpion --highscores
  * 
@@ -21,30 +21,91 @@
       * begin a new game and save it in /saved (if exists rename with incremental)
       * start game and save at each turn
  *  - restore game
-      * list all games stored in /saved/* : http://faq.cprogramming.com/cgi-bin/smartfaq.cgi?answer=1046380353&id=1044780608
+      * list all games stored in /saved/'* : http://faq.cprogramming.com/cgi-bin/smartfaq.cgi?answer=1046380353&id=1044780608
         display file name & date modification => man 2 stat
  *  - help
  *  - highscores
  *  - quit 
  */
 
+typedef enum {
+  GES_FINISHED, GES_INTERRUPT
+} GameEndStatus;
+
+static GameEndStatus newGame(GameMode gameMode, char* nickname);
+static GameEndStatus runGame(Game* game);
+
+static void printHelp(char* argv0) {
+  printf("Usage: %s [--dic <path>] [--level <level>]\n", argv0);
+  printf("\n");
+  printf("Options:\n");
+  printf("  -h, --help\t\tdisplay this help\n");
+  printf("\n");
+}
+
+
 int main(int argc, char* argv[]) {
-  int count;
-  int gamePoints = 0;
-  char buf[100];
+  if(util_containsArg(argc, argv, "--help") 
+  || util_containsArg(argc, argv, "-h")) {
+    printHelp(argv[0]);
+    return 0;
+  }
   
+  ui_init();
+  newGame(GM_SOBER, "");
+  ui_close();
+  return 0;
+}
+
+static void homePage() {
+  
+}
+
+static void highscoresPage() {
+  
+}
+
+static void startGamePage() {
+  
+}
+
+static void loadGamePage() {
+  
+}
+
+static GameEndStatus loadGame(FILE* file) {
+  Game* game = game_init();
+  ie_importGame(file, game);
+  GameEndStatus status = runGame(game);
+  game_close(game);
+  return status;
+}
+
+static GameEndStatus newGame(GameMode gameMode, char* nickname) {
+  Game* game = game_init();
+  game_setMode(game, gameMode);
+  GameEndStatus status = runGame(game);
+  game_close(game);
+  return status;
+}
+
+// Move it to game and split in many functions.
+static GameEndStatus runGame(Game* game) {
+  GameEndStatus status;
+  char buf[100];
+  int count, countPossibilities = -1;
+  int gamePoints = 0;
   Action action = Action_NONE;
   int end = FALSE;
   int cursorChanged;
   int quitRequest = FALSE;
   Point cursor, select;
-  Game* game = game_init(GM_SOBER, TRUE);
-  ui_init(game);
+  
   ui_onGameStart(game);
    do {
     action = ui_getAction();
     ui_cleanMessage();
-      
+    
     cursor = game_getCursor(game);
     cursorChanged = FALSE;
     if(action==Action_LEFT && cursor.x>0) {
@@ -76,6 +137,9 @@ int main(int argc, char* argv[]) {
       count = game_countOccupiedCases(game, select, cursor);
       if((count==LINE_LENGTH || count==LINE_LENGTH-1)
       && game_consumableCases(game, select, cursor)) {
+        
+        game_computeAllPossibilities(game);
+        
         gamePoints += (count==LINE_LENGTH) ? POINTS_TRACE_LINE : POINTS_PUT_POINT;
         game_occupyCases(game, select, cursor);
         game_consumeCases(game, select, cursor);
@@ -106,9 +170,13 @@ int main(int argc, char* argv[]) {
     }
     
     ui_refresh();
-  } while(!end);
+  } while(!end && countPossibilities!=0);
   
   ui_onGameEnd(game);
-  ui_close();
-  return 0;
+  
+  if(countPossibilities==0)
+    status = GES_FINISHED;
+  else
+    status = GES_INTERRUPT;
+  return status;
 }

@@ -6,6 +6,10 @@
 
 #include "globals.h"
 
+#define MAX_POSSIBILITIES (4*GRID_SIZE*GRID_SIZE)
+
+// TODO : refactoring game (split into multiple files ?)
+
 typedef enum {
   CASE_EMPTY=0,
   CASE_OCCUPIED
@@ -34,16 +38,21 @@ typedef enum {
 
 typedef struct _Game Game;
 
-extern Game* game_init(GameMode gameMode, int gumModeEnabled);
+extern Game* game_init();
 extern void game_close(Game*);
 extern void game_start(Game*);
 extern Game* game_startWithLines(Line lines[]);
 extern void game_end(Game*);
 
 
-extern int game_hasCollinearAndContainsTwo(Game* game, Point from, Point to);
+extern void game_setMode(Game* game, GameMode gameMode);
+
+extern int game_hasCollinearAndContainsTwo(Line* lines, int nlines, Point from, Point to);
 
 extern Line* game_getLines(Game* game, int* length);
+
+extern void game_computeAllPossibilities(Game* game);
+extern Line* game_getAllPossibilities(Game* game, int* length);
 
 extern void game_addLine(Game* game, Line l);
 extern Grid* game_getGrid(Game*);
