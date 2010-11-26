@@ -15,6 +15,7 @@ int util_inRangeExclusif(int i, int a, int b);
  */
 extern char* str_trim(char *s);
 
+extern void str_formatOnlyAlphaAndUnderscore(char* str);
 
 /// Args utils ///
 

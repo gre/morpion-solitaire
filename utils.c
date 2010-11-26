@@ -21,6 +21,12 @@ int util_inRangeExclusif(int i, int a, int b) {
   return a<i && i<b;
 }
 
+extern void str_formatOnlyAlphaAndUnderscore(char* str) {
+  int n = strlen(str);
+  while(n-->0)
+    if(!isalnum(str[n])) 
+      str[n] = '_';
+}
 
 extern char* str_trim(char *s) {
     while(isspace(*s)) s++;

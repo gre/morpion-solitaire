@@ -54,6 +54,8 @@ extern Line* game_getLines(Game* game, int* length);
 extern int game_computeAllPossibilities(Game* game);
 extern Line* game_getAllPossibilities(Game* game, int* length);
 
+extern void game_setNickname(Game* game, char* nickname);
+
 extern void game_addLine(Game* game, Line l);
 extern Grid* game_getGrid(Game*);
 extern Point game_getCursor(Game*);

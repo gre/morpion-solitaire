@@ -33,12 +33,13 @@ typedef enum {
 } GameEndStatus;
 
 static GameEndStatus newGame(GameMode gameMode, char* nickname);
-static GameEndStatus runGame(Game* game);
+static GameEndStatus runGame(Game* game, FILE* file);
 
 static void printHelp(char* argv0) {
   printf("Usage: %s [--dic <path>] [--level <level>]\n", argv0);
   printf("\n");
   printf("Options:\n");
+  printf("  -n [nickname], --new [nickname] \t\tdisplay this help\n");
   printf("  -h, --help\t\tdisplay this help\n");
   printf("\n");
 }
@@ -51,9 +52,14 @@ int main(int argc, char* argv[]) {
     return 0;
   }
   
-  ui_init();
-  newGame(GM_SOBER, "");
-  ui_close();
+  char* str;
+  if(util_getArgString(argc, argv, "--new", &str)==0 || util_getArgString(argc, argv, "-n", &str)==0) {
+    ui_init();
+    newGame(GM_SOBER, str);
+    ui_close();
+  }
+  
+  
   return 0;
 }
 
@@ -76,7 +82,7 @@ static void loadGamePage() {
 static GameEndStatus loadGame(FILE* file) {
   Game* game = game_init();
   ie_importGame(file, game);
-  GameEndStatus status = runGame(game);
+  GameEndStatus status = runGame(game, file);
   game_close(game);
   return status;
 }
@@ -84,13 +90,16 @@ static GameEndStatus loadGame(FILE* file) {
 static GameEndStatus newGame(GameMode gameMode, char* nickname) {
   Game* game = game_init();
   game_setMode(game, gameMode);
-  GameEndStatus status = runGame(game);
+  str_formatOnlyAlphaAndUnderscore(nickname);
+  game_setNickname(game, nickname);
+  FILE* f = ie_getAvailableFile(nickname);
+  GameEndStatus status = runGame(game, f);
   game_close(game);
   return status;
 }
 
 // Move it to game and split in many functions.
-static GameEndStatus runGame(Game* game) {
+static GameEndStatus runGame(Game* game, FILE* file) {
   GameEndStatus status;
   char buf[100];
   int count, countPossibilities = -1;
@@ -142,6 +151,7 @@ static GameEndStatus runGame(Game* game) {
         game_consumeCases(game, select, cursor);
         game_emptySelection(game);
         countPossibilities = game_computeAllPossibilities(game);
+        ie_exportGame(game, file);
         sprintf(buf, "Total points: %d", gamePoints);
         ui_printMessage_success(buf);
       }

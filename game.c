@@ -18,6 +18,8 @@ struct _Game {
   Line possibilities[MAX_POSSIBILITIES];
   int possibilities_length;
   
+  char* nickname;
+  
   int gumModeEnabled;
   GameMode gameMode;
 };
@@ -240,6 +242,10 @@ extern Point game_getSelect(Game* game) {
 extern void game_emptySelection(Game* game) {
   game->grid.select.x = -1;
   game->grid.select.y = -1;
+}
+
+extern void game_setNickname(Game* game, char* nickname) {
+  game->nickname = nickname;
 }
 
 extern void initGrid(Grid* grid) {
