@@ -23,7 +23,7 @@ typedef enum {
  */
 extern Action ui_getAction();
 
-extern void ui_printInfos(Game* game);
+extern void ui_printInfos(Game* game, int saved);
 
 extern void ui_refresh();
 

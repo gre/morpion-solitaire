@@ -14,18 +14,6 @@
  *  ./morpion --new <username>
  *  ./morpion --help
  *  ./morpion --highscores
- * 
- * menu :
- *  - new game
-      * type your name
-      * begin a new game and save it in /saved (if exists rename with incremental)
-      * start game and save at each turn
- *  - restore game
-      * list all games stored in /saved/'* : http://faq.cprogramming.com/cgi-bin/smartfaq.cgi?answer=1046380353&id=1044780608
-        display file name & date modification => man 2 stat
- *  - help
- *  - highscores
- *  - quit 
  */
 
 typedef enum {
@@ -37,54 +25,51 @@ static GameEndStatus newGame(char* nickname);
 static GameEndStatus runGame(Game* game);
 
 static void printHelp(char* argv0) {
-  printf("Usage: %s [--dic <path>] [--level <level>]\n", argv0);
+  printf("  -----------------------\n");
+  printf("  -- Morpion Solitaire --  2010 -- Gaetan Renaudeau\n");
+  printf("  -----------------------\n");
   printf("\n");
+  
+  printf("Start a new game :\n");
+  printf("       %s --new {nickname}\n", argv0);
+  printf("       %s  -n {nickname}\n", argv0);
+  printf("\n");
+  
+  printf("Restore a game :\n");
+  printf("       %s --load {game file}\n", argv0);
+  printf("       %s  -l {game file}\n", argv0);
+  printf("\n");
+
   printf("Options:\n");
-  printf("  -n [nickname], --new [nickname] \t\tdisplay this help\n");
-  printf("  -h, --help\t\tdisplay this help\n");
+  printf("  --highscores\t\tshow highscores\n");
+  printf("  --help, -h\t\tdisplay this help\n");
   printf("\n");
 }
 
 
 int main(int argc, char* argv[]) {
+  char* str = 0;
   if(util_containsArg(argc, argv, "--help") 
   || util_containsArg(argc, argv, "-h")) {
     printHelp(argv[0]);
     return 0;
   }
-  
-  char* str = 0;
-  if(util_getArgString(argc, argv, "--new", &str)==0 || util_getArgString(argc, argv, "-n", &str)==0) {
+  else if(util_getArgString(argc, argv, "--new", &str)==0 || util_getArgString(argc, argv, "-n", &str)==0) {
     ui_init();
     newGame(str);
     ui_close();
   }
-  
-  if(util_getArgString(argc, argv, "--load", &str)==0 || util_getArgString(argc, argv, "-l", &str)==0) {
+  else if(util_getArgString(argc, argv, "--load", &str)==0 || util_getArgString(argc, argv, "-l", &str)==0) {
     ui_init();
     loadGame(str);
     ui_close();
   }
-  
-  
-  
+  else {
+    printf("\tUsage: %s --new {nickname}\n", argv[0]);
+    printf("\tUsage: %s --load {game file}\n", argv[0]);
+    printf("More infos with %s --help\n", argv[0]);
+  }
   return 0;
-}
-
-static void homePage() {
-  
-}
-
-static void highscoresPage() {
-  
-}
-
-static void startGamePage() {
-  
-}
-
-static void loadGamePage() {
-  
 }
 
 static GameEndStatus loadGame(char* filepath) {
@@ -125,8 +110,12 @@ static GameEndStatus runGame(Game* game) {
   Line line;
   int gridNeedUpdate;
   int hasMessage;
+  int gameSaved = game_getLinesCount(game)>0;
   
-  ui_onGameStart(game);
+  ui_printMessage_info("Move your cursor with arrows or ZSQD key");
+  ui_printInfos(game, gameSaved);
+  ui_updateGrid(game);
+  ui_refresh();
    do {
     gridNeedUpdate = FALSE;
     action = ui_getAction();
@@ -173,6 +162,7 @@ static GameEndStatus runGame(Game* game) {
           game_emptySelection(game);
           countPossibilities = game_computeAllPossibilities(game);
           ie_exportGame(game);
+          gameSaved = TRUE;
         }
         else if(pointExists(select)) {
           ui_printMessage_error("Invalid action");
@@ -226,7 +216,7 @@ static GameEndStatus runGame(Game* game) {
     
     if(gridNeedUpdate)
       ui_updateGrid(game);
-    ui_printInfos(game);
+    ui_printInfos(game, gameSaved);
     ui_refresh();
   } while(!end && countPossibilities!=0);
   

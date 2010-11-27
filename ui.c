@@ -36,7 +36,7 @@ extern void setColor(WINDOW* win, int color) {
   wattron(win, COLOR_PAIR(color));
 }
 
-extern void ui_printInfos(Game* game) {
+extern void ui_printInfos(Game* game, int saved) {
   GameMode mode = game_getMode(game);
   char buf[BUFFER_SIZE];
   int x;
@@ -51,10 +51,12 @@ extern void ui_printInfos(Game* game) {
   mvwprintw(win_title, 0, x+7, game_getNickname(game));
   wattroff(win_title, A_BOLD);
   
-  setColor(win_title, CLR_BLUE);
-  snprintf(buf, BUFFER_SIZE, "save: %s", game_getFilepath(game));
-  x = (WIN_TITLE_WIDTH-strlen(buf))/2;
-  mvwprintw(win_title, 1, x, buf);
+  if(saved) {
+    setColor(win_title, CLR_BLUE);
+    snprintf(buf, BUFFER_SIZE, "save: %s", game_getFilepath(game));
+    x = (WIN_TITLE_WIDTH-strlen(buf))/2;
+    mvwprintw(win_title, 1, x, buf);
+  }
   
   setColor(win_title, CLR_DEFAULT);
   snprintf(buf, BUFFER_SIZE, "score: ");
@@ -306,10 +308,6 @@ extern void ui_confirmExit() {
 }
 
 extern void ui_onGameStart(Game* game) {
-  ui_printMessage_info("Move your cursor with arrows or ZSQD key");
-  ui_printInfos(game);
-  ui_updateGrid(game);
-  ui_refresh();
 }
 
 extern void ui_onGameEnd(Game* game) { 
