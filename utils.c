@@ -24,7 +24,7 @@ int util_inRangeExclusif(int i, int a, int b) {
 extern void str_formatOnlyAlphaAndUnderscore(char* str) {
   int n = strlen(str);
   while(n-->0)
-    if(!isalnum(str[n])) 
+    if(!isalnum(str[n]))
       str[n] = '_';
 }
 

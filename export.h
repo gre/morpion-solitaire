@@ -8,10 +8,12 @@
 
 #include "game.h"
 
-extern int ie_exportGame(Game* game, FILE* file);
-extern int ie_importGame(FILE* file, Game* game);
+#define FILENAME_BUFFER_SIZE 100
+
+extern int ie_exportGame(Game* game);
+extern int ie_importGame(char* filepath, Game* game);
 
 extern int ie_listSavedFiles(char** strings, int limit);
-extern FILE* ie_getAvailableFile(char* nickname);
+extern int ie_getAvailableFile(char* nickname, char* store);
 
 #endif

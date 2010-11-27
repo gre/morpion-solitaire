@@ -29,11 +29,12 @@
  */
 
 typedef enum {
-  GES_FINISHED, GES_INTERRUPT
+  GES_ERROR_ONLOAD, GES_FINISHED, GES_INTERRUPT
 } GameEndStatus;
 
-static GameEndStatus newGame(GameMode gameMode, char* nickname);
-static GameEndStatus runGame(Game* game, FILE* file);
+static GameEndStatus loadGame(char* filepath);
+static GameEndStatus newGame(char* nickname);
+static GameEndStatus runGame(Game* game);
 
 static void printHelp(char* argv0) {
   printf("Usage: %s [--dic <path>] [--level <level>]\n", argv0);
@@ -52,12 +53,19 @@ int main(int argc, char* argv[]) {
     return 0;
   }
   
-  char* str;
+  char* str = 0;
   if(util_getArgString(argc, argv, "--new", &str)==0 || util_getArgString(argc, argv, "-n", &str)==0) {
     ui_init();
-    newGame(GM_SOBER, str);
+    newGame(str);
     ui_close();
   }
+  
+  if(util_getArgString(argc, argv, "--load", &str)==0 || util_getArgString(argc, argv, "-l", &str)==0) {
+    ui_init();
+    loadGame(str);
+    ui_close();
+  }
+  
   
   
   return 0;
@@ -79,41 +87,51 @@ static void loadGamePage() {
   
 }
 
-static GameEndStatus loadGame(FILE* file) {
+static GameEndStatus loadGame(char* filepath) {
   Game* game = game_init();
-  ie_importGame(file, game);
-  GameEndStatus status = runGame(game, file);
+  if(ie_importGame(filepath, game)!=0) {
+    game_close(game);
+    return GES_ERROR_ONLOAD;
+  }
+  game_setFilepath(game, filepath);
+  GameEndStatus status = runGame(game);
   game_close(game);
   return status;
 }
 
-static GameEndStatus newGame(GameMode gameMode, char* nickname) {
-  Game* game = game_init();
-  game_setMode(game, gameMode);
+static GameEndStatus newGame(char* nickname) {
+  Game* game;
+  char filepath[FILENAME_BUFFER_SIZE];
+  if(ie_getAvailableFile(nickname, filepath)!=0)
+    return GES_ERROR_ONLOAD;
+  game = game_init();
   str_formatOnlyAlphaAndUnderscore(nickname);
   game_setNickname(game, nickname);
-  FILE* f = ie_getAvailableFile(nickname);
-  GameEndStatus status = runGame(game, f);
+  game_setFilepath(game, filepath);
+  GameEndStatus status = runGame(game);
   game_close(game);
   return status;
 }
 
 // Move it to game and split in many functions.
-static GameEndStatus runGame(Game* game, FILE* file) {
+static GameEndStatus runGame(Game* game) {
   GameEndStatus status;
-  char buf[100];
   int count, countPossibilities = -1;
-  int gamePoints = 0;
   Action action = Action_NONE;
   int end = FALSE;
   int cursorChanged;
   int quitRequest = FALSE;
   Point cursor, select;
+  Line line;
+  int gridNeedUpdate;
+  int hasMessage;
   
   ui_onGameStart(game);
    do {
+    gridNeedUpdate = FALSE;
     action = ui_getAction();
     ui_cleanMessage();
+    hasMessage = FALSE;
     
     cursor = game_getCursor(game);
     cursorChanged = FALSE;
@@ -136,47 +154,79 @@ static GameEndStatus runGame(Game* game, FILE* file) {
     
     if(cursorChanged) {
       game_setCursor(game, cursor);
-      ui_updateGrid(game);
+      gridNeedUpdate = TRUE;
     }
     if(action==Action_YES && quitRequest)
       end = TRUE;
     else if(action==Action_VALID) {
       select = game_getSelect(game);
       game_selectCase(game, cursor);
-      count = game_countOccupiedCases(game, select, cursor);
-      if((count==LINE_LENGTH || count==LINE_LENGTH-1)
-      && game_consumableCases(game, select, cursor)) {
-        gamePoints += (count==LINE_LENGTH) ? POINTS_TRACE_LINE : POINTS_PUT_POINT;
-        game_occupyCases(game, select, cursor);
-        game_consumeCases(game, select, cursor);
-        game_emptySelection(game);
-        countPossibilities = game_computeAllPossibilities(game);
-        ie_exportGame(game, file);
-        sprintf(buf, "Total points: %d", gamePoints);
-        ui_printMessage_success(buf);
+      
+      if(game_isValidLineBetween(select, cursor)
+      && game_getLineBetween(select, cursor, &line)==LINE_LENGTH) {
+        count = game_countOccupiedCases(game, line);
+        if((count==LINE_LENGTH || count==LINE_LENGTH-1)
+        && game_isPlayableLine(game, line)) {
+          ui_printMessage_success("Line played");
+          hasMessage = TRUE;
+          game_consumeLine(game, line);
+          game_emptySelection(game);
+          countPossibilities = game_computeAllPossibilities(game);
+          ie_exportGame(game);
+        }
+        else if(pointExists(select)) {
+          ui_printMessage_error("Invalid action");
+          hasMessage = TRUE;
+          game_emptySelection(game);
+        }
       }
       else if(pointExists(select)) {
-        ui_printMessage_error("invalid action");
+        ui_printMessage_error("Invalid line");
+        hasMessage = TRUE;
         game_emptySelection(game);
       }
       
-      ui_updateGrid(game);
+      gridNeedUpdate = TRUE;
+    }
+    else if(action==Action_UNDO) {
+      game_emptySelection(game);
+      game_undoLine(game);
+      game_computeAllPossibilities(game);
+      ie_exportGame(game);
+      gridNeedUpdate = TRUE;
+    }
+    else if(action==Action_TOGGLE_HELP) {
+      game_toggleMode(game);
+      gridNeedUpdate = TRUE;
     }
     
     if(action==Action_CANCEL) {
       if(pointExists(game_getSelect(game))) {
         game_emptySelection(game);
-        ui_updateGrid(game);
+        gridNeedUpdate = TRUE;
       }
       else {
         quitRequest = TRUE;
         ui_confirmExit();
+        hasMessage = TRUE;
       }
     }
     else {
       quitRequest = FALSE;
     }
     
+    if(!hasMessage) {
+      if(!pointExists(select)) {
+        ui_printMessage_info("Select the endpoint of the line by pressing <enter> or <space>");
+      }
+      else {
+        ui_printMessage_info("Select a line startpoint with your cursor by pressing <enter> or <space>");
+      }
+    }
+    
+    if(gridNeedUpdate)
+      ui_updateGrid(game);
+    ui_printInfos(game);
     ui_refresh();
   } while(!end && countPossibilities!=0);
   

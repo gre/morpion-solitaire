@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "globals.h"
 #include "utils.h"
 #include "game.h"
 
@@ -9,7 +10,9 @@
 struct _Game {
   Line* lines;
   int nlines;
-  int lines_current_max;
+  int lines_current_max; // lines capacity for current allocation
+  
+  int score;
   
   Grid grid; // computed turn by turn
   
@@ -19,9 +22,9 @@ struct _Game {
   int possibilities_length;
   
   char* nickname;
+  char* filepath;
   
-  int gumModeEnabled;
-  GameMode gameMode;
+  GameMode mode;
 };
 
 static Point noPoint = {-1, -1};
@@ -43,11 +46,13 @@ extern Game* game_init() {
   Game* game = malloc(sizeof(Game));
   game->lines = 0;
   game->nlines = 0;
+  game->score = 0;
   game->lines_current_max = 0;
-  initGrid(&(game->grid));
+  game_initGrid(&(game->grid));
   game->lastPlay = noPoint;
-  game->gumModeEnabled = TRUE;
-  game->gameMode = GM_SOBER;
+  game->mode = GM_SOBER;
+  game->nickname = 0;
+  game->filepath = 0;
   game_computeAllPossibilities(game);
   return game;
 }
@@ -57,11 +62,7 @@ extern void game_close(Game* game) {
   free(game);
 }
 
-extern void game_setMode(Game* game, GameMode gameMode) {
-  game->gameMode = GM_SOBER;
-}
-
-static int game_getLineBetween(Point from, Point to, Line* line) {
+extern int game_getLineBetween(Point from, Point to, Line* line) {
   int i, dx, dy, incrX, incrY;
   Point p;
   dx = to.x-from.x;
@@ -71,19 +72,6 @@ static int game_getLineBetween(Point from, Point to, Line* line) {
   for(i=0, p.x=from.x, p.y=from.y; i<LINE_LENGTH && pointExists(p); p.x+=incrX, p.y+=incrY, ++i)
     line->points[i] = p;
   return i; // count
-}
-
-extern void game_addLine(Game* game, Line l) {
-  if(game->nlines==game->lines_current_max) {
-    game->lines_current_max += LINES_ALLOC_WINDOW;
-    game->lines = game->lines==0 ? malloc(sizeof(Line)*game->lines_current_max) : realloc(game->lines, sizeof(Line)*game->lines_current_max);
-  }
-  game->lines[game->nlines++] = l;
-}
-
-extern Line* game_getLines(Game* game, int* length) {
-  *length = game->nlines;
-  return game->lines;
 }
 
 extern Grid* game_getGrid(Game* game) {
@@ -96,17 +84,9 @@ extern int game_pointsInSameAxis(Point a, Point b) {
 extern int game_pointsInSameDiagonal(Point a, Point b) {
   return util_abs(a.x-b.x) == util_abs(a.y-b.y);
 }
-extern int game_countOccupiedCases(Game* game, Point from, Point to) {
-  Line line;
-  int i, count = 0, size = game_getLineBetween(from, to, &line);
-  for(i=0; i<size; ++i)
-    if(game_isOccupied(game, line.points[i]))
-      ++count;
-  return count;
-}
 
 // new version
-extern int _game_countOccupiedCases(Game* game, Line line) {
+extern int game_countOccupiedCases(Game* game, Line line) {
   int i, count = 0;
   for(i=0; i<LINE_LENGTH; ++i)
     if(game_isOccupied(game, line.points[i]))
@@ -122,6 +102,14 @@ static int game_pointBetweenExclusif(Point p, Point a, Point b) {
 
 extern int game_pointsEquals(Point a, Point b) {
   return a.x==b.x && a.y==b.y;
+}
+
+extern int game_lineContainsPoint(Line line, Point point) {
+  int i;
+  for(i=0; i<LINE_LENGTH; ++i)
+    if(pointEquals(point, line.points[i]))
+      return TRUE;
+  return FALSE;
 }
 
 extern int game_hasCollinearAndContainsTwo(Line* lines, int nlines, Point from, Point to) {
@@ -158,28 +146,15 @@ extern int game_hasCollinearAndContains(Game* game, Line line) {
   return FALSE;
 }
 
-extern int game_consumableCases(Game* game, Point from, Point to) {
+extern int game_isValidLineBetween(Point from, Point to) {
   int dx = to.x-from.x;
   int dy = to.y-from.y;
-  Line line;
-  // correct axis and distance
-  if((util_abs(dx)==LINE_LENGTH-1 || util_abs(dy)==LINE_LENGTH-1) && (game_pointsInSameAxis(from, to) || game_pointsInSameDiagonal(from, to)))
-    if(game_getLineBetween(from, to, &line)==LINE_LENGTH)
-      if(!game_hasCollinearAndContains(game, line))
-        return TRUE;
-  return FALSE;
+  return pointExists(from) && pointExists(to)
+      && (util_abs(dx)==LINE_LENGTH-1 || util_abs(dy)==LINE_LENGTH-1)
+      && (game_pointsInSameAxis(from, to) || game_pointsInSameDiagonal(from, to));
 }
 
-extern void game_consumeCases(Game* game, Point from, Point to) {
-  Line line;
-  game_getLineBetween(from, to, &line);
-  game_addLine(game, line);
-}
 
-static int game_isPlayableLine(Game* game, Line line) {
-    int count = _game_countOccupiedCases(game, line);
-    return ((count==LINE_LENGTH || count==LINE_LENGTH-1) && !game_hasCollinearAndContains(game, line));
-}
 extern int game_computeAllPossibilities(Game* game) {
   Line* lines = game->possibilities;
   Line line;
@@ -227,12 +202,11 @@ extern int game_isOccupied(Game* game, Point p) {
 extern void game_occupyCase(Game* game, Point p) {
   game->grid.grid[p.x][p.y] = CASE_OCCUPIED;
 }
-extern void game_occupyCases(Game* game, Point from, Point to) {
-  Line line;
-  int i, size = game_getLineBetween(from, to, &line);
-  for(i=0; i<size; ++i)
-    game_occupyCase(game, line.points[i]);
+
+extern int game_getScore(Game* game) {
+  return game->score;
 }
+
 extern void game_selectCase(Game* game, Point p) {
   game->grid.select = p;
 }
@@ -247,8 +221,85 @@ extern void game_emptySelection(Game* game) {
 extern void game_setNickname(Game* game, char* nickname) {
   game->nickname = nickname;
 }
+extern char* game_getNickname(Game* game) {
+  return game->nickname;
+}
+extern void game_setFilepath(Game* game, char* filepath) {
+  game->filepath = filepath;
+}
+extern char* game_getFilepath(Game* game) {
+  return game->filepath;
+}
 
-extern void initGrid(Grid* grid) {
+extern int game_getLinesCount(Game* game) {
+  return game->nlines;
+}
+
+extern GameMode game_getMode(Game* game) {
+  return game->mode;
+}
+extern void game_setMode(Game* game, GameMode mode) {
+  game->mode = mode;
+}
+
+extern GameMode game_toggleMode(Game* game) {
+  switch(game->mode) {
+    case GM_SOBER: return game->mode = GM_VISUAL;
+    case GM_VISUAL: return game->mode = GM_HELP;
+    default: return game->mode = GM_SOBER;
+  }
+}
+
+extern int game_mustDisplayPossibilities(Game* game) {
+  return game->mode!=GM_SOBER;
+}
+
+extern Line* game_getLines(Game* game, int* length) {
+  *length = game->nlines;
+  return game->lines;
+}
+extern void game_addLine(Game* game, Line l) {
+  if(game->nlines==game->lines_current_max) {
+    game->lines_current_max += LINES_ALLOC_WINDOW;
+    game->lines = game->lines==0 ? malloc(sizeof(Line)*game->lines_current_max) : realloc(game->lines, sizeof(Line)*game->lines_current_max);
+  }
+  game->lines[game->nlines++] = l;
+}
+
+extern int game_isPlayableLine(Game* game, Line line) {
+    int count = game_countOccupiedCases(game, line);
+    return ((count==LINE_LENGTH || count==LINE_LENGTH-1) 
+    && !game_hasCollinearAndContains(game, line));
+}
+
+extern void game_recomputeGrid(Game* game) {
+  int i;
+  game_initGrid(&(game->grid));
+  Line* lines = game->lines;
+  int nlines = game->nlines;
+  game->score = 0;
+  game->lines = 0;
+  game->nlines = 0;
+  game->lines = malloc(sizeof(Line)*game->lines_current_max);
+  for(i=0; i<nlines; ++i) {
+    game_consumeLine(game, lines[i]);
+  }
+  free(lines);
+}
+extern void game_undoLine(Game* game) {
+  game->nlines = MAX(game->nlines-1, 0);
+  game_recomputeGrid(game);
+}
+extern void game_consumeLine(Game* game, Line line) {
+  int i;
+  int count = game_countOccupiedCases(game, line);
+  for(i=0; i<LINE_LENGTH; ++i)
+    game_occupyCase(game, line.points[i]);
+  game->score += (count==LINE_LENGTH) ? POINTS_TRACE_LINE : POINTS_PUT_POINT;
+  game_addLine(game, line);
+}
+
+extern void game_initGrid(Grid* grid) {
   Point p;
   grid->cursor.x = GRID_SIZE/2;
   grid->cursor.y = GRID_SIZE/2;
