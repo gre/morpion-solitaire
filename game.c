@@ -1,11 +1,15 @@
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 
 #include "globals.h"
 #include "utils.h"
 #include "game.h"
+#include "export.h"
 
 #define LINES_ALLOC_WINDOW 2
+
+#define HIGHSCORE_MAX 10
 
 struct _Game {
   Line* lines;
@@ -297,6 +301,30 @@ extern void game_consumeLine(Game* game, Line line) {
     game_occupyCase(game, line.points[i]);
   game->score += (count==LINE_LENGTH) ? POINTS_TRACE_LINE : POINTS_PUT_POINT;
   game_addLine(game, line);
+}
+
+static int highscoreEquals(Highscore *a, Highscore *b) {
+  return a->score==b->score && strcmp(a->nickname, b->nickname)==0;
+}
+
+extern int game_saveScore(Game* game) {
+  int rank = 0;
+  Highscore highscores[HIGHSCORE_MAX];
+  Highscore highscore;
+  highscore.score = game_getScore(game);
+  strncpy(highscore.nickname, game_getNickname(game), NICKNAME_LENGTH);
+  int length = ie_retrieveHighscores(highscores, HIGHSCORE_MAX);
+  ie_sortHighscores(highscores, length);
+  if(length!=HIGHSCORE_MAX || highscores[length-1].score < highscore.score) {
+    highscores[length!=HIGHSCORE_MAX ? length : length-1] = highscore;
+    ++ length;
+    ie_sortHighscores(highscores, length);
+    
+    for(rank=length-1; !highscoreEquals(&highscores[rank], &highscore) && rank>=0; --rank);
+    rank ++;
+  }
+  ie_storeHighscores(highscores, MIN(HIGHSCORE_MAX, length));
+  return rank;
 }
 
 extern void game_initGrid(Grid* grid) {

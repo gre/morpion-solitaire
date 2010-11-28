@@ -14,7 +14,7 @@ int util_inRangeExclusif(int i, int a, int b);
  * @return the trimed string
  */
 extern char* str_trim(char *s);
-
+extern void str_truncate(char* str, int length);
 extern void str_formatOnlyAlphaAndUnderscore(char* str);
 
 /// Args utils ///

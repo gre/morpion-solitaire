@@ -67,7 +67,7 @@ extern void ui_printInfos(Game* game, int saved) {
   wattroff(win_title, A_BOLD);
   
   strcpy(buf, mode==GM_SOBER ? "sober" : (mode==GM_VISUAL ? "visual" : "help"));
-  setColor(win_title, mode==GM_SOBER ? CLR_RED : (mode==GM_VISUAL ? CLR_BLUE : CLR_GREEN));
+  setColor(win_title, mode==GM_SOBER ? CLR_YELLOW : (mode==GM_VISUAL ? CLR_BLUE : CLR_GREEN));
   mvwprintw(win_title, 0, WIN_TITLE_WIDTH-strlen(buf), buf);
   
   setColor(win_title, CLR_DEFAULT);
@@ -256,6 +256,7 @@ extern Action ui_getAction() {
       return Action_CANCEL;
     
     case KEY_BACKSPACE:
+    case 127: // for macosx
       return Action_UNDO;
     
     default:
@@ -305,12 +306,6 @@ extern void ui_init() {
 
 extern void ui_confirmExit() {
   ui_printMessage_info("Quit ? [y/n]");
-}
-
-extern void ui_onGameStart(Game* game) {
-}
-
-extern void ui_onGameEnd(Game* game) { 
 }
 
 extern void ui_updateGrid(Game* game) {

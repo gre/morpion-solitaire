@@ -11,6 +11,16 @@
 // TODO : refactoring game (split into multiple files ?)
 
 typedef enum {
+  Action_NONE=0, /* Action invalid (no action) */
+  Action_LEFT, Action_RIGHT, Action_UP, Action_DOWN, /* arrow for navigation */
+  Action_YES,
+  Action_UNDO,
+  Action_TOGGLE_HELP,
+  Action_VALID, /* Valid action */
+  Action_CANCEL /* Cancel a state (ex: quit the game) */
+} Action;
+
+typedef enum {
   CASE_EMPTY=0,
   CASE_OCCUPIED
 } CaseType;
@@ -35,8 +45,12 @@ typedef enum {
   GM_HELP
 } GameMode;
 
-
 typedef struct _Game Game;
+
+typedef struct _Highscore {
+  char nickname[NICKNAME_LENGTH+1];
+  int score;
+} Highscore;
 
 extern Game* game_init();
 extern void game_close(Game*);
@@ -85,6 +99,7 @@ extern void game_emptySelection(Game* game);
 extern void game_setCursor(Game*, Point);
 extern void game_initGrid(Grid*);
 
+extern int game_saveScore(Game* game);
 extern int game_isValidLineBetween(Point from, Point to);
 
 extern int pointEquals(Point, Point);

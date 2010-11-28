@@ -9,11 +9,9 @@
 
 /**
  * TODO
- * command line
- *  ./morpion --load [<path to a game file>]
- *  ./morpion --new <username>
- *  ./morpion --help
- *  ./morpion --highscores
+ *
+ * impl highscores
+ * impl help mode : on case play hover display playable other case
  */
 
 typedef enum {
@@ -91,6 +89,7 @@ static GameEndStatus newGame(char* nickname) {
     return GES_ERROR_ONLOAD;
   game = game_init();
   str_formatOnlyAlphaAndUnderscore(nickname);
+  str_truncate(nickname, NICKNAME_LENGTH);
   game_setNickname(game, nickname);
   game_setFilepath(game, filepath);
   GameEndStatus status = runGame(game);
@@ -101,7 +100,7 @@ static GameEndStatus newGame(char* nickname) {
 // Move it to game and split in many functions.
 static GameEndStatus runGame(Game* game) {
   GameEndStatus status;
-  int count, countPossibilities = -1;
+  int rank, count, countPossibilities = -1;
   Action action = Action_NONE;
   int end = FALSE;
   int cursorChanged;
@@ -111,7 +110,9 @@ static GameEndStatus runGame(Game* game) {
   int gridNeedUpdate;
   int hasMessage;
   int gameSaved = game_getLinesCount(game)>0;
+  char buf[100], buf2[100];
   
+  countPossibilities = game_computeAllPossibilities(game);
   ui_printMessage_info("Move your cursor with arrows or ZSQD key");
   ui_printInfos(game, gameSaved);
   ui_updateGrid(game);
@@ -181,7 +182,7 @@ static GameEndStatus runGame(Game* game) {
     else if(action==Action_UNDO) {
       game_emptySelection(game);
       game_undoLine(game);
-      game_computeAllPossibilities(game);
+      countPossibilities = game_computeAllPossibilities(game);
       ie_exportGame(game);
       gridNeedUpdate = TRUE;
     }
@@ -218,15 +219,24 @@ static GameEndStatus runGame(Game* game) {
       ui_updateGrid(game);
     ui_printInfos(game, gameSaved);
     ui_refresh();
+    printf("%d", countPossibilities);
   } while(!end && countPossibilities!=0);
   
-  ui_onGameEnd(game);
-  
   if(countPossibilities==0) {
+    rank = game_saveScore(game);
+    if(rank)
+      snprintf(buf2, 100, " You take the %dth place!", rank);
+    else
+      *buf2 = 0;
+    snprintf(buf, 100, "Game over.%s Press any key...", buf2);
+    ui_printMessage_success(buf);
+    ie_removeGame(game);
+    ui_refresh();
     ui_getAction();
     status = GES_FINISHED;
   }
-  else
+  else {
     status = GES_INTERRUPT;
+  }
   return status;
 }

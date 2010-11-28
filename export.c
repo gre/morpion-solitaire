@@ -5,13 +5,11 @@
 #include <sys/types.h>
 #include <string.h>
 
-#include <fnmatch.h>
-#include <dirent.h>
-
 #include "export.h"
 #include "game.h"
 
 #define SAVE_DIR "saved/"
+#define HIGHSCORES_PATH "highscores"
 #define SAVE_FILE_EXTENSION "sav"
 
 extern int ie_exportGame(Game* game) {
@@ -30,6 +28,11 @@ extern int ie_exportGame(Game* game) {
   }
   fclose(file);
   return 0;
+}
+
+
+extern int ie_removeGame(Game* game) {
+  return remove(game_getFilepath(game));
 }
 
 static char* ie_guessNicknameFromFilepath(char* filepath) {
@@ -58,6 +61,39 @@ extern int ie_importGame(char* filepath, Game* game) {
   }
   fclose(file);
   game_setNickname(game, ie_guessNicknameFromFilepath(filepath));
+  return 0;
+}
+
+
+static int comparHighscore(const void* a, const void* b) {
+  return ((Highscore*)b)->score - ((Highscore*)a)->score;
+}
+
+extern void ie_sortHighscores(Highscore* highscores, int length) {
+  qsort(highscores, length, sizeof(Highscore), comparHighscore);
+}
+
+extern int ie_retrieveHighscores(Highscore* highscores, int max) {
+  int length = 0;
+  Highscore highscore;
+  FILE* file = fopen(HIGHSCORES_PATH, "r");
+  if(file!=NULL) {
+    while(length<max && fscanf(file, "%d %" NICKNAME_LENGTH_STR "s", &(highscore.score), highscore.nickname)==2)
+      highscores[length++] = highscore;
+    fclose(file);
+  }
+  return length;
+}
+
+extern int ie_storeHighscores(Highscore* highscores, int length) {
+  int i;
+  FILE* file = fopen(HIGHSCORES_PATH, "w");
+  if(file!=NULL) {
+    for(i=0; i<length; ++i)
+      fprintf(file, "%d %s\n", highscores[i].score, highscores[i].nickname);
+    fclose(file);
+  }
+  else return 1;
   return 0;
 }
 

@@ -21,6 +21,11 @@ int util_inRangeExclusif(int i, int a, int b) {
   return a<i && i<b;
 }
 
+extern void str_truncate(char* str, int length) {
+  if(strlen(str)>length)
+    str[length] = 0;
+}
+
 extern void str_formatOnlyAlphaAndUnderscore(char* str) {
   int n = strlen(str);
   while(n-->0)
