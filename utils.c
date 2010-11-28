@@ -22,7 +22,7 @@ int util_inRangeExclusif(int i, int a, int b) {
 }
 
 extern void str_truncate(char* str, int length) {
-  if(strlen(str)>length)
+  if(strlen(str)>(unsigned)length)
     str[length] = 0;
 }
 

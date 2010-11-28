@@ -1,3 +1,5 @@
+# TODO : refactor dependencies
+
 .PHONY: clean
 
 DEBUG = -Wall -g

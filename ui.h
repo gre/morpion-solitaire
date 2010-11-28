@@ -5,6 +5,12 @@
  */
 #include "game.h"
 
+
+/**
+ * TODO : some complexe algorithm must be move into others modules (game or other ?)
+ * organize extern functions
+ */
+
 /**
  * Blocking function.
  * Wait for a key and return result
@@ -13,7 +19,7 @@
  */
 extern Action ui_getAction();
 
-extern void ui_printInfos(Game* game, int saved);
+extern void ui_printInfos(Game* game);
 
 extern void ui_refresh();
 

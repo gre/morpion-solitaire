@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
@@ -7,9 +8,13 @@
 #include "game.h"
 #include "export.h"
 
-#define LINES_ALLOC_WINDOW 2
+#include "ui.h"
 
+#define LINES_ALLOC_WINDOW 2
 #define HIGHSCORE_MAX 10
+
+extern int game_moveCursorForAction(Action action, Point* cursor);
+
 
 struct _Game {
   Line* lines;
@@ -65,6 +70,122 @@ extern void game_close(Game* game) {
     free(game->lines);
   free(game);
 }
+
+extern void game_onStart(Game* game) {
+  game_computeAllPossibilities(game);
+  ui_printMessage_info("Move your cursor with arrows or ZSQD key");
+  ui_updateGrid(game);
+  ui_refresh();
+}
+
+extern void game_onStop(Game* game) {
+  int rank;
+  char buf[100], buf2[100];
+  if(game_getPossibilitiesNumber(game)==0) {
+    rank = game_saveScore(game);
+    if(rank)
+      snprintf(buf2, 100, " You take the %dth place!", rank);
+    else
+      *buf2 = 0;
+    snprintf(buf, 100, "Game over.%s Press any key...", buf2);
+    ui_printMessage_success(buf);
+    ie_removeGame(game);
+    ui_updateGrid(game);
+    ui_printInfos(game);
+    ui_refresh();
+    ui_getAction();
+  }
+}
+
+extern void game_onActionUndo(Game* game) {
+  game_emptySelection(game);
+  game_undoLine(game);
+  game_computeAllPossibilities(game);
+  ie_exportGame(game);
+}
+
+extern void game_onActionValid(Game* game) {
+  int count;
+  Line line;
+  Point cursor = game_getCursor(game);
+  Point select = game_getSelect(game);
+  game_selectCase(game, cursor);
+  
+  if(game_isValidLineBetween(select, cursor) && game_getLineBetween(select, cursor, &line)==LINE_LENGTH) {
+    count = game_countOccupiedCases(game, line);
+    if((count==LINE_LENGTH || count==LINE_LENGTH-1) && game_isPlayableLine(game, line)) {
+      ui_printMessage_success("Line played");
+      game_consumeLine(game, line);
+      game_emptySelection(game);
+      game_computeAllPossibilities(game);
+      ie_exportGame(game);
+    }
+    else if(pointExists(select)) {
+      ui_printMessage_error("Invalid action");
+      game_emptySelection(game);
+    }
+  }
+  else if(pointExists(select)) {
+    ui_printMessage_error("Invalid line");
+    game_emptySelection(game);
+  }
+}
+
+extern void game_beforeAction(Game* game) {
+  ui_updateGrid(game);
+  ui_printInfos(game);
+  ui_refresh();
+}
+extern void game_onAction(Game* game, Action action, int* quitRequest) {
+  Point cursor, select;
+  if(action==Action_CANCEL && !pointExists(game_getSelect(game))) {
+    ui_confirmExit();
+    *quitRequest = TRUE;
+  }
+  else {
+    *quitRequest = FALSE;
+    ui_cleanMessage();
+    if(!pointExists(select))
+      ui_printMessage_info("Select the endpoint of the line by pressing <enter> or <space>");
+    else
+      ui_printMessage_info("Select a line startpoint with your cursor by pressing <enter> or <space>");
+    
+    cursor = game_getCursor(game);
+    if(game_moveCursorForAction(action, &cursor))
+      game_setCursor(game, cursor);
+    
+    else if(action==Action_UNDO)
+      game_onActionUndo(game);
+    else if(action==Action_TOGGLE_HELP)
+      game_toggleMode(game);
+    else if(action==Action_VALID)
+      game_onActionValid(game);
+    else if(action==Action_CANCEL)
+      game_emptySelection(game);
+  }
+}
+
+
+extern int game_moveCursorForAction(Action action, Point* cursor) {
+  if(action==Action_LEFT && cursor->x>0) {
+    cursor->x --;
+    return TRUE;
+  }
+  else if(action==Action_DOWN && cursor->y>0) {
+    cursor->y --;
+    return TRUE;
+  }
+  else if(action==Action_RIGHT && cursor->x<GRID_SIZE-1) {
+    cursor->x ++;
+    return TRUE;
+  }
+  else if(action==Action_UP && cursor->y<GRID_SIZE-1) {
+    cursor->y ++;
+    return TRUE;
+  }
+  return FALSE;
+}
+
 
 extern int game_getLineBetween(Point from, Point to, Line* line) {
   int i, dx, dy, incrX, incrY;
@@ -188,6 +309,9 @@ extern int game_computeAllPossibilities(Game* game) {
     }
   }
   return game->possibilities_length = possibilities;
+}
+extern int game_getPossibilitiesNumber(Game* game) {
+  return game->possibilities_length;
 }
 extern Line* game_getAllPossibilities(Game* game, int* length) {
   *length = game->possibilities_length;

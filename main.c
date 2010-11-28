@@ -10,7 +10,6 @@
 /**
  * TODO
  *
- * impl highscores
  * impl help mode : on case play hover display playable other case
  */
 
@@ -44,11 +43,9 @@ static void printHelp(char* argv0) {
   printf("\n");
 }
 
-
 int main(int argc, char* argv[]) {
   char* str = 0;
-  if(util_containsArg(argc, argv, "--help") 
-  || util_containsArg(argc, argv, "-h")) {
+  if(util_containsArg(argc, argv, "--help") || util_containsArg(argc, argv, "-h")) {
     printHelp(argv[0]);
     return 0;
   }
@@ -61,6 +58,10 @@ int main(int argc, char* argv[]) {
     ui_init();
     loadGame(str);
     ui_close();
+  }
+  else if(util_getArgString(argc, argv, "--highscores", &str)==0) {
+    // TODO
+    printf("TODO: print highscoress\n");
   }
   else {
     printf("\tUsage: %s --new {nickname}\n", argv[0]);
@@ -99,143 +100,17 @@ static GameEndStatus newGame(char* nickname) {
 
 // Move it to game and split in many functions.
 static GameEndStatus runGame(Game* game) {
-  GameEndStatus status;
-  int rank, count, countPossibilities = -1;
-  Action action = Action_NONE;
-  int end = FALSE;
-  int cursorChanged;
-  int quitRequest = FALSE;
-  Point cursor, select;
-  Line line;
-  int gridNeedUpdate;
-  int hasMessage;
-  int gameSaved = game_getLinesCount(game)>0;
-  char buf[100], buf2[100];
-  
-  countPossibilities = game_computeAllPossibilities(game);
-  ui_printMessage_info("Move your cursor with arrows or ZSQD key");
-  ui_printInfos(game, gameSaved);
-  ui_updateGrid(game);
-  ui_refresh();
-   do {
-    gridNeedUpdate = FALSE;
+  Action action;
+  int end = FALSE, quitRequest = FALSE;
+  game_onStart(game);
+  do {
+    game_beforeAction(game);
     action = ui_getAction();
-    ui_cleanMessage();
-    hasMessage = FALSE;
-    
-    cursor = game_getCursor(game);
-    cursorChanged = FALSE;
-    if(action==Action_LEFT && cursor.x>0) {
-      cursor.x --;
-      cursorChanged = TRUE;
-    }
-    else if(action==Action_DOWN && cursor.y>0) {
-      cursor.y --;
-      cursorChanged = TRUE;
-    }
-    else if(action==Action_RIGHT && cursor.x<GRID_SIZE-1) {
-      cursor.x ++;
-      cursorChanged = TRUE;
-    }
-    else if(action==Action_UP && cursor.y<GRID_SIZE-1) {
-      cursor.y ++;
-      cursorChanged = TRUE;
-    }
-    
-    if(cursorChanged) {
-      game_setCursor(game, cursor);
-      gridNeedUpdate = TRUE;
-    }
     if(action==Action_YES && quitRequest)
       end = TRUE;
-    else if(action==Action_VALID) {
-      select = game_getSelect(game);
-      game_selectCase(game, cursor);
-      
-      if(game_isValidLineBetween(select, cursor)
-      && game_getLineBetween(select, cursor, &line)==LINE_LENGTH) {
-        count = game_countOccupiedCases(game, line);
-        if((count==LINE_LENGTH || count==LINE_LENGTH-1)
-        && game_isPlayableLine(game, line)) {
-          ui_printMessage_success("Line played");
-          hasMessage = TRUE;
-          game_consumeLine(game, line);
-          game_emptySelection(game);
-          countPossibilities = game_computeAllPossibilities(game);
-          ie_exportGame(game);
-          gameSaved = TRUE;
-        }
-        else if(pointExists(select)) {
-          ui_printMessage_error("Invalid action");
-          hasMessage = TRUE;
-          game_emptySelection(game);
-        }
-      }
-      else if(pointExists(select)) {
-        ui_printMessage_error("Invalid line");
-        hasMessage = TRUE;
-        game_emptySelection(game);
-      }
-      
-      gridNeedUpdate = TRUE;
-    }
-    else if(action==Action_UNDO) {
-      game_emptySelection(game);
-      game_undoLine(game);
-      countPossibilities = game_computeAllPossibilities(game);
-      ie_exportGame(game);
-      gridNeedUpdate = TRUE;
-    }
-    else if(action==Action_TOGGLE_HELP) {
-      game_toggleMode(game);
-      gridNeedUpdate = TRUE;
-    }
-    
-    if(action==Action_CANCEL) {
-      if(pointExists(game_getSelect(game))) {
-        game_emptySelection(game);
-        gridNeedUpdate = TRUE;
-      }
-      else {
-        quitRequest = TRUE;
-        ui_confirmExit();
-        hasMessage = TRUE;
-      }
-    }
-    else {
-      quitRequest = FALSE;
-    }
-    
-    if(!hasMessage) {
-      if(!pointExists(select)) {
-        ui_printMessage_info("Select the endpoint of the line by pressing <enter> or <space>");
-      }
-      else {
-        ui_printMessage_info("Select a line startpoint with your cursor by pressing <enter> or <space>");
-      }
-    }
-    
-    if(gridNeedUpdate)
-      ui_updateGrid(game);
-    ui_printInfos(game, gameSaved);
-    ui_refresh();
-  } while(!end && countPossibilities!=0);
-  
-  if(countPossibilities==0) {
-    rank = game_saveScore(game);
-    if(rank)
-      snprintf(buf2, 100, " You take the %dth place!", rank);
     else
-      *buf2 = 0;
-    snprintf(buf, 100, "Game over.%s Press any key...", buf2);
-    ui_printMessage_success(buf);
-    ie_removeGame(game);
-    ui_refresh();
-    ui_getAction();
-    status = GES_FINISHED;
-  }
-  else {
-    status = GES_INTERRUPT;
-  }
-  return status;
+      game_onAction(game, action, &quitRequest);
+  } while(!end && game_getPossibilitiesNumber(game)>0);
+  game_onStop(game);
+  return game_getPossibilitiesNumber(game)==0 ? GES_FINISHED : GES_INTERRUPT;
 }

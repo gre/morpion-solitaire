@@ -36,7 +36,8 @@ extern void setColor(WINDOW* win, int color) {
   wattron(win, COLOR_PAIR(color));
 }
 
-extern void ui_printInfos(Game* game, int saved) {
+extern void ui_printInfos(Game* game) {
+  int saved = game_getLinesCount(game)>0;
   GameMode mode = game_getMode(game);
   char buf[BUFFER_SIZE];
   int x;
@@ -312,7 +313,7 @@ extern void ui_updateGrid(Game* game) {
   drawGrid(game);
 }
 
-extern void ui_close(Game* game) {
+extern void ui_close() {
   clrtoeol();
   ui_refresh();
   delwin(win_grid);
