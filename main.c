@@ -219,7 +219,6 @@ static GameEndStatus runGame(Game* game) {
       ui_updateGrid(game);
     ui_printInfos(game, gameSaved);
     ui_refresh();
-    printf("%d", countPossibilities);
   } while(!end && countPossibilities!=0);
   
   if(countPossibilities==0) {
