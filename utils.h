@@ -5,7 +5,6 @@
  */
 
 int util_abs(int);
-int util_inRangeExclusif(int i, int a, int b);
 
 /**
  * Trim a string (remove extra spaces around words)

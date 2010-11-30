@@ -4,6 +4,8 @@
 #define GRID_SIZE 18
 #define LINE_LENGTH 5
 
+#define HIGHSCORE_MAX 10
+
 #define NICKNAME_LENGTH 30
 #define NICKNAME_LENGTH_STR "30"
 

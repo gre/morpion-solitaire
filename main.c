@@ -6,15 +6,15 @@
 #include "game.h"
 #include "ui.h"
 #include "export.h"
+#include "highscore.h"
 
 /**
- * TODO
- *
- * impl help mode : on case play hover display playable other case
+ * TODO: impl help mode : on case play hover display playable other case
+ * TODO: proper error message on limit case
  */
 
 typedef enum {
-  GES_ERROR_ONLOAD, GES_FINISHED, GES_INTERRUPT
+  GES_NONE, GES_ERROR_ONLOAD, GES_FINISHED, GES_INTERRUPT
 } GameEndStatus;
 
 static GameEndStatus loadGame(char* filepath);
@@ -44,29 +44,38 @@ static void printHelp(char* argv0) {
 }
 
 int main(int argc, char* argv[]) {
+  GameEndStatus status = GES_NONE;
   char* str = 0;
+  Highscore highscores[HIGHSCORE_MAX];
   if(util_containsArg(argc, argv, "--help") || util_containsArg(argc, argv, "-h")) {
     printHelp(argv[0]);
     return 0;
   }
   else if(util_getArgString(argc, argv, "--new", &str)==0 || util_getArgString(argc, argv, "-n", &str)==0) {
     ui_init();
-    newGame(str);
+    status = newGame(str);
     ui_close();
   }
   else if(util_getArgString(argc, argv, "--load", &str)==0 || util_getArgString(argc, argv, "-l", &str)==0) {
     ui_init();
-    loadGame(str);
+    status = loadGame(str);
     ui_close();
   }
-  else if(util_getArgString(argc, argv, "--highscores", &str)==0) {
-    // TODO
-    printf("TODO: print highscoress\n");
+  else if(util_containsArg(argc, argv, "--highscores")) {
+    highscore_retrieve(highscores, HIGHSCORE_MAX);
+    highscore_print(highscores, HIGHSCORE_MAX);
+    return 0;
   }
   else {
     printf("\tUsage: %s --new {nickname}\n", argv[0]);
     printf("\tUsage: %s --load {game file}\n", argv[0]);
     printf("More infos with %s --help\n", argv[0]);
+    return 0;
+  }
+  
+  if(status==GES_ERROR_ONLOAD) {
+    fprintf(stderr, "Unable to load the game.\n");
+    return 1;
   }
   return 0;
 }
@@ -78,6 +87,10 @@ static GameEndStatus loadGame(char* filepath) {
     return GES_ERROR_ONLOAD;
   }
   game_setFilepath(game, filepath);
+  if(ie_exportGame(game)!=0) { // Be sure we can export the game
+    game_close(game);
+    return GES_ERROR_ONLOAD;
+  }
   GameEndStatus status = runGame(game);
   game_close(game);
   return status;
@@ -98,7 +111,6 @@ static GameEndStatus newGame(char* nickname) {
   return status;
 }
 
-// Move it to game and split in many functions.
 static GameEndStatus runGame(Game* game) {
   Action action;
   int end = FALSE, quitRequest = FALSE;

@@ -7,20 +7,6 @@
 
 #include "utils.h"
 
-int util_abs(int n) {
-  return n<0 ? -n : n;
-}
-
-int util_inRangeExclusif(int i, int a, int b) {
-  int tmp;
-  if(a>b) {
-    tmp = a;
-    a = b;
-    b = tmp;
-  }
-  return a<i && i<b;
-}
-
 extern void str_truncate(char* str, int length) {
   if(strlen(str)>(unsigned)length)
     str[length] = 0;
@@ -41,6 +27,10 @@ extern char* str_trim(char *s) {
     return s;
 }
 
+
+int util_abs(int n) {
+  return n<0 ? -n : n;
+}
 
 static void consumeArg(int index, char * argv[]) {
   *argv[index] = '\0';

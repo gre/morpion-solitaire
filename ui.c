@@ -4,6 +4,7 @@
 
 #include "ui.h"
 #include "game.h"
+#include "points.h"
 
 #define ESCAPE_KEY 27
 #define ENTER_KEY 10
@@ -22,18 +23,22 @@
 #define WIN_MESSAGE_WIDTH (4+GRAPHIC_CASE_W*GRID_SIZE)
 #define WIN_MESSAGE_TOP (GRID_TOP+2+(GRAPHIC_CASE_H*GRID_SIZE))
 
-enum { 
+typedef enum { 
   CLR_DEFAULT=1, CLR_CASE, CLR_CASE_SELECTED, CLR_CASE_EMPTY_SELECTED, CLR_LINES, CLR_LINES_PLAYABLE,
   CLR_MESSAGE, CLR_MESSAGE_ERROR, CLR_MESSAGE_SUCCESS,
   CLR_RED, CLR_BLUE, CLR_GREEN, CLR_YELLOW
-};
+} CLR;
 
 WINDOW* win_grid;
 WINDOW* win_message;
 WINDOW* win_title;
 
-extern void setColor(WINDOW* win, int color) {
+static void setColor(WINDOW* win, int color) {
   wattron(win, COLOR_PAIR(color));
+}
+static void ui_printMessage(char* str) {
+  ui_cleanMessage();
+  mvwprintw(win_message, 1, (WIN_MESSAGE_WIDTH-strlen(str))/2, str);
 }
 
 extern void ui_printInfos(Game* game) {
@@ -83,10 +88,6 @@ extern void ui_printInfos(Game* game) {
 extern void ui_cleanMessage() {
   mvwhline(win_message, 1, 1, ' ', WIN_MESSAGE_WIDTH-2);
 }
-static void ui_printMessage(char* str) {
-  ui_cleanMessage();
-  mvwprintw(win_message, 1, (WIN_MESSAGE_WIDTH-strlen(str))/2, str);
-}
 
 extern void ui_printMessage_info(char* str) {
   setColor(win_message, CLR_MESSAGE);
@@ -108,7 +109,7 @@ static Point toGraphicCoord(Point p) {
   return newP;
 }
 
-static void drawLines(Line* lines, int nlines, Point highlight) {
+static void drawLines(Line* lines, int nlines) {
   Point a, b, p, p2;
   int hasReverseDiag;
   int x, y, i, j;
@@ -116,9 +117,6 @@ static void drawLines(Line* lines, int nlines, Point highlight) {
   
   for(i=0; i<nlines; ++i) {
     line = lines[i];
-    if(game_lineContainsPoint(line, highlight))
-      wattron(win_grid, A_BOLD);
-      
     for(j=0; j<LINE_LENGTH-1; ++j) {
       p = toGraphicCoord(line.points[j]);
       p2 = toGraphicCoord(line.points[j+1]);
@@ -138,14 +136,31 @@ static void drawLines(Line* lines, int nlines, Point highlight) {
         else {
           a.x--; b.x++;
         }
-        hasReverseDiag = game_hasCollinearAndContainsTwo(lines, nlines, a, b);
+        hasReverseDiag = line_hasCollinearAndContainsTwo(lines, nlines, a, b);
         if((p.y<p2.y && p.x<p2.x) || (p.y>p2.y && p.x>p2.x))
           mvwprintw(win_grid, y, x, hasReverseDiag ? "X" : "\\");
         else
           mvwprintw(win_grid, y, x, hasReverseDiag ? "X" :"/");
       }
     }
-    wattroff(win_grid, A_BOLD);
+  }
+}
+
+static void drawPoint(Point p, char c) {
+  Point graphicPoint = toGraphicCoord(p);
+  mvwprintw(win_grid, graphicPoint.y+1, graphicPoint.x+2, "%c", c);
+}
+
+static void drawPointsOnGrid(Point* points, int length, Point cursor, Point select, char c, CLR clr_selected, CLR clr) {
+  int i;
+  Point p;
+  for(i=0; i<length; ++i) {
+    p = points[i];
+    if(point_equals(p, cursor)) 
+      wattron(win_grid, A_REVERSE);
+    setColor(win_grid, point_equals(p, select) ? clr_selected : clr);
+    drawPoint(p, c);
+    wattroff(win_grid, A_REVERSE);
   }
 }
 
@@ -156,62 +171,62 @@ static void cleanGrid() {
     mvwhline(win_grid, i, 1, ' ', wLength);
 }
 
-static void drawGrid(Game* game) {
-  Point p, graphicPoint;
-  CaseType caseType;
+
+// TODO : for highlighing lines : extract lines to highlight into a line array
+extern void ui_updateGrid(Game* game) {
+  Point points[GRID_SIZE*GRID_SIZE];
+  int npoints;
+  
+  Point p;
   Grid* grid = game_getGrid(game);
   int length, i, j;
-  Line line, *lines;
+  Line *lines;
   int displayPossibilities = game_mustDisplayPossibilities(game);
+  int possibilitiesOnHover = point_exists(game_getSelect(game));
   
   cleanGrid();
   
-  if(displayPossibilities) {
+  if(displayPossibilities && !possibilitiesOnHover) {
     lines = game_getAllPossibilities(game, &length);
     setColor(win_grid, CLR_LINES_PLAYABLE);
-    drawLines(lines, length, grid->select);
+    drawLines(lines, length);
   }
   
   lines = game_getLines(game, &length);
   setColor(win_grid, CLR_LINES);
-  drawLines(lines, length, grid->select);
+  drawLines(lines, length);
   
+  npoints = 0;
+  for(p.y=0; p.y<GRID_SIZE; ++p.y)
+    for(p.x=0; p.x<GRID_SIZE; ++p.x)
+      if(game_isOccupied(game, p))
+        points[npoints++] = p;
+  drawPointsOnGrid(points, npoints, grid->cursor, grid->select, 'o', CLR_CASE_SELECTED, CLR_CASE);
   
-  for(p.y=0; p.y<GRID_SIZE; ++p.y) {
-    for(p.x=0; p.x<GRID_SIZE; ++p.x) {
-      caseType = grid->grid[p.x][p.y];
-      if(pointEquals(p, grid->cursor)) 
-        wattron(win_grid, A_REVERSE);
-      setColor(win_grid, (pointEquals(p, grid->select)) ? (caseType == CASE_EMPTY ? CLR_CASE_EMPTY_SELECTED : CLR_CASE_SELECTED) : CLR_CASE);
-    
-      graphicPoint = toGraphicCoord(p);
-      mvwprintw(win_grid, graphicPoint.y+1, graphicPoint.x+2, caseType == CASE_EMPTY ? " " : "o");
-      
-      wattroff(win_grid, A_REVERSE);
-    }
+  if(point_indexOf(points, npoints, grid->cursor)==-1) {
+    wattron(win_grid, A_REVERSE);
+    drawPoint(grid->cursor, ' ');
+  }
+  if(point_indexOf(points, npoints, grid->select)==-1) {
+    setColor(win_grid, CLR_CASE_EMPTY_SELECTED);
+    drawPoint(grid->select, ' ');
   }
   
   if(displayPossibilities) {
     lines = game_getAllPossibilities(game, &length);
-    for(i=0; i<length; ++i) {
-      line = lines[i];
-      if(game_lineContainsPoint(line, grid->select))
-        wattron(win_grid, A_BOLD);
-      for(j=0; j<LINE_LENGTH; ++j) {
-        p = line.points[j];
-        graphicPoint = toGraphicCoord(p);
-        caseType = grid->grid[p.x][p.y];
-        if(caseType == CASE_EMPTY) {
-          if(pointEquals(p, grid->cursor)) 
-            wattron(win_grid, A_REVERSE);
-          else 
-            wattroff(win_grid, A_REVERSE);
-          setColor(win_grid, pointEquals(p, grid->select) ? CLR_CASE_SELECTED : CLR_LINES_PLAYABLE);
-          mvwprintw(win_grid, graphicPoint.y+1, graphicPoint.x+2, "*");
-        }
-      }
-      wattroff(win_grid, A_BOLD);
+    if(possibilitiesOnHover) {
+      setColor(win_grid, CLR_LINES_PLAYABLE);
+      drawLines(lines, length);
     }
+    npoints = 0;
+    for(i=0; i<length; ++i) {
+      for(j=0; j<LINE_LENGTH; ++j) {
+        p = lines[i].points[j];
+        if(!game_isOccupied(game, p) && point_indexOf(points, npoints, p)==-1)
+          points[npoints++] = p;
+      }
+    }
+    drawPointsOnGrid(points, npoints, grid->cursor, grid->select, '*', CLR_CASE_SELECTED, CLR_LINES_PLAYABLE);
   }
   
   wattroff(win_grid, A_REVERSE);
@@ -256,7 +271,7 @@ extern Action ui_getAction() {
     case ESCAPE_KEY:
       return Action_CANCEL;
     
-    case KEY_BACKSPACE:
+    case KEY_BACKSPACE: // work on linux
     case 127: // for macosx
       return Action_UNDO;
     
@@ -303,14 +318,6 @@ extern void ui_init() {
   box(win_message, 0, 0);
   refresh();
   ui_refresh();
-}
-
-extern void ui_confirmExit() {
-  ui_printMessage_info("Quit ? [y/n]");
-}
-
-extern void ui_updateGrid(Game* game) {
-  drawGrid(game);
 }
 
 extern void ui_close() {

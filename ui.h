@@ -8,7 +8,7 @@
 
 /**
  * TODO : some complexe algorithm must be move into others modules (game or other ?)
- * organize extern functions
+ * TODO : organize extern functions
  */
 
 /**
