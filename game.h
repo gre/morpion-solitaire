@@ -14,6 +14,15 @@ typedef enum {
   CASE_OCCUPIED
 } CaseType;
 
+typedef enum {
+  PE_NONE=0,
+  PE_BAD,
+  PE_ORDINARY,
+  PE_GREAT,
+  PE_IMPRESSIVE,
+  PE_AWESOME
+} PlayEvaluation;
+
 typedef struct _Grid {
   CaseType grid[GRID_SIZE][GRID_SIZE];
   Point cursor;
@@ -32,8 +41,7 @@ typedef enum {
 
 typedef enum {
   GM_SOBER=1,
-  GM_VISUAL,
-  GM_HELP
+  GM_VISUAL
 } GameMode;
 
 typedef struct _Game Game;
@@ -68,6 +76,8 @@ extern void game_setNickname(Game* game, char* nickname);
 
 extern char* game_getFilepath(Game* game);
 extern void game_setFilepath(Game* game, char* filepath);
+
+extern PlayEvaluation game_getLastPlayEvaluation(Game* game);
 
 extern GameMode game_toggleMode(Game* game);
 

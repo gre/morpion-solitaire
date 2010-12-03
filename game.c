@@ -34,6 +34,8 @@ struct _Game {
   char* filepath;
   
   GameMode mode;
+  
+  PlayEvaluation lastPlayEvalution;
 };
 
 
@@ -47,6 +49,7 @@ extern Game* game_init() {
   game->mode = GM_SOBER;
   game->nickname = 0;
   game->filepath = 0;
+  game->lastPlayEvalution = PE_NONE;
   game_computeAllPossibilities(game);
   return game;
 }
@@ -58,7 +61,7 @@ extern void game_close(Game* game) {
 
 extern void game_onStart(Game* game) {
   game_computeAllPossibilities(game);
-  ui_printMessage_info("Move your cursor with arrows or ZSQD key");
+  ui_printMessage_info("Move your cursor with arrows or ZSQD keys");
   ui_updateGrid(game);
   ui_refresh();
 }
@@ -72,24 +75,27 @@ extern void game_onStop(Game* game) {
       snprintf(buf2, 100, " You take the %dth place!", rank);
     else
       *buf2 = 0;
-    snprintf(buf, 100, "Game over.%s Press any key...", buf2);
+    snprintf(buf, 100, "Game over.%s Press <enter> to quit", buf2);
     ui_printMessage_success(buf);
     ie_removeGame(game);
     ui_updateGrid(game);
     ui_printInfos(game);
     ui_refresh();
-    ui_getAction();
+    while(ui_getAction() != Action_VALID);
   }
 }
 
 extern void game_onActionUndo(Game* game) {
   game_setSelect(game, point_empty());
   game_undoLine(game);
+  game->lastPlayEvalution = PE_NONE;
   game_computeAllPossibilities(game);
   ie_exportGame(game);
+  ui_printMessage_success("Time machine has done... Going back in time!");
 }
 
 extern void game_onActionValid(Game* game) {
+  int possibilitiesCount, diff;
   int count;
   Line line;
   Point cursor = game_getCursor(game);
@@ -99,18 +105,41 @@ extern void game_onActionValid(Game* game) {
   if(line_isValidLineBetween(select, cursor) && line_getLineBetween(select, cursor, &line)==LINE_LENGTH) {
     count = game_countOccupiedCases(game, line);
     if((count==LINE_LENGTH || count==LINE_LENGTH-1) && game_isPlayableLine(game, line)) {
-      ui_printMessage_success("Line played");
+      ui_printMessage_success("Line played. ");
+      possibilitiesCount = game_getPossibilitiesNumber(game);
       game_consumeLine(game, line);
-      game_computeAllPossibilities(game);
+      if(game_getLinesCount(game)) {
+        diff = game_computeAllPossibilities(game) - possibilitiesCount + 1;
+        if(diff<=-2) {
+          game->lastPlayEvalution = PE_BAD;
+        }
+        else if(diff<=1) {
+          game->lastPlayEvalution = PE_ORDINARY;
+        }
+        else if(diff<4) {
+          game->lastPlayEvalution = PE_GREAT;
+        }
+        else if(diff<7) {
+          game->lastPlayEvalution = PE_IMPRESSIVE;
+        }
+        else {
+          game->lastPlayEvalution = PE_AWESOME;
+        }
+        if(count==LINE_LENGTH)
+          game->lastPlayEvalution = MIN(PE_AWESOME, game->lastPlayEvalution+3);
+      }
+      else {
+        game->lastPlayEvalution = PE_NONE;
+      }
       ie_exportGame(game);
     }
     else if(point_exists(select)) {
-      ui_printMessage_error("Invalid action");
+      ui_printMessage_error("Invalid action. You better stop now!");
     }
     game_setSelect(game, point_empty());
   }
   else if(point_exists(select)) {
-    ui_printMessage_error("Invalid line");
+    ui_printMessage_error("Invalid line. You better stop now!");
     game_setSelect(game, point_empty());
   }
 }
@@ -123,7 +152,7 @@ extern void game_beforeAction(Game* game) {
 extern void game_onAction(Game* game, Action action, int* quitRequest) {
   Point cursor, select;
   if(action==Action_CANCEL && !point_exists(game_getSelect(game))) {
-    ui_printMessage_info("Quit ? [y/n]");
+    ui_printMessage_info("Quit? Oh really? [y/n]");
     *quitRequest = TRUE;
   }
   else {
@@ -138,7 +167,7 @@ extern void game_onAction(Game* game, Action action, int* quitRequest) {
     if(game_moveCursorForAction(action, &cursor))
       game_setCursor(game, cursor);
     
-    else if(action==Action_UNDO)
+    else if(action==Action_UNDO && game_getLinesCount(game)>0)
       game_onActionUndo(game);
     else if(action==Action_TOGGLE_HELP)
       game_toggleMode(game);
@@ -271,10 +300,14 @@ extern void game_setMode(Game* game, GameMode mode) {
 extern GameMode game_toggleMode(Game* game) {
   switch(game->mode) {
     case GM_SOBER: return game->mode = GM_VISUAL;
-    case GM_VISUAL: return game->mode = GM_HELP;
     default: return game->mode = GM_SOBER;
   }
 }
+
+extern PlayEvaluation game_getLastPlayEvaluation(Game* game) {
+  return game->lastPlayEvalution;
+}
+
 
 extern int game_mustDisplayPossibilities(Game* game) {
   return game->mode!=GM_SOBER;
@@ -313,8 +346,10 @@ extern void game_recomputeGrid(Game* game) {
   free(lines);
 }
 extern void game_undoLine(Game* game) {
+  Point cursor = game->grid.cursor;
   game->nlines = MAX(game->nlines-1, 0);
   game_recomputeGrid(game);
+  game->grid.cursor = cursor;
 }
 extern void game_consumeLine(Game* game, Line line) {
   int i;

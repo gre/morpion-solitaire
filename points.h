@@ -28,6 +28,7 @@ extern int point_inSameAxis(Point a, Point b);
 extern int point_inSameDiagonal(Point a, Point b);
 
 extern int line_containsPoint(Line line, Point point);
+extern int line_pointAtExtremity(Line line, Point point);
 extern int line_getLineBetween(Point from, Point to, Line* line);
 extern int line_isValidLineBetween(Point from, Point to);
 extern int line_hasCollinearAndContainsTwo(Line* lines, int nlines, Point a, Point b);

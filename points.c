@@ -62,6 +62,10 @@ extern int line_containsPoint(Line line, Point point) {
   return FALSE;
 }
 
+extern int line_pointAtExtremity(Line line, Point point) {
+  return point_equals(line.points[0], point) || point_equals(line.points[LINE_LENGTH-1], point);
+}
+
 extern int line_hasCollinearAndContainsTwo(Line* lines, int nlines, Point a, Point b) {
   int i;
   for(i=0; i < nlines; ++i)

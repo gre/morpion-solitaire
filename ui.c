@@ -44,24 +44,27 @@ static void ui_printMessage(char* str) {
 extern void ui_printInfos(Game* game) {
   int saved = game_getLinesCount(game)>0;
   GameMode mode = game_getMode(game);
+  PlayEvaluation evalution = game_getLastPlayEvaluation(game);
   char buf[BUFFER_SIZE];
   int x;
   setColor(win_title, CLR_DEFAULT);
   mvwhline(win_title, 0, 1, ' ', WIN_TITLE_WIDTH);
   mvwhline(win_title, 1, 1, ' ', WIN_TITLE_WIDTH);
   
-  setColor(win_title, CLR_YELLOW);
-  x = (WIN_TITLE_WIDTH-strlen(game_getNickname(game))-7)/2;
-  mvwprintw(win_title, 0, x, "Hello,");
-  wattron(win_title, A_BOLD);
-  mvwprintw(win_title, 0, x+7, game_getNickname(game));
-  wattroff(win_title, A_BOLD);
   
   if(saved) {
     setColor(win_title, CLR_BLUE);
     snprintf(buf, BUFFER_SIZE, "save: %s", game_getFilepath(game));
     x = (WIN_TITLE_WIDTH-strlen(buf))/2;
-    mvwprintw(win_title, 1, x, buf);
+    mvwprintw(win_title, 0, x, buf);
+  }
+  else {
+    setColor(win_title, CLR_YELLOW);
+    x = (WIN_TITLE_WIDTH-strlen(game_getNickname(game))-7)/2;
+    mvwprintw(win_title, 0, x, "Hello,");
+    wattron(win_title, A_BOLD);
+    mvwprintw(win_title, 0, x+7, game_getNickname(game));
+    wattroff(win_title, A_BOLD);
   }
   
   setColor(win_title, CLR_DEFAULT);
@@ -72,9 +75,27 @@ extern void ui_printInfos(Game* game) {
   mvwprintw(win_title, 1, 8, buf);
   wattroff(win_title, A_BOLD);
   
-  strcpy(buf, mode==GM_SOBER ? "sober" : (mode==GM_VISUAL ? "visual" : "help"));
-  setColor(win_title, mode==GM_SOBER ? CLR_YELLOW : (mode==GM_VISUAL ? CLR_BLUE : CLR_GREEN));
+  strcpy(buf, mode==GM_SOBER ? "sober" : "visual");
+  setColor(win_title, mode==GM_SOBER ? CLR_YELLOW : CLR_BLUE);
   mvwprintw(win_title, 0, WIN_TITLE_WIDTH-strlen(buf), buf);
+  
+  if(mode==GM_VISUAL && evalution) {
+    if(evalution==PE_BAD)
+      snprintf(buf, BUFFER_SIZE, "bad...");
+    else if(evalution==PE_ORDINARY)
+      snprintf(buf, BUFFER_SIZE, "ordinary.");
+    else if(evalution==PE_GREAT)
+      snprintf(buf, BUFFER_SIZE, "great :)");
+    else if(evalution==PE_IMPRESSIVE)
+      snprintf(buf, BUFFER_SIZE, "impressive!");
+    else if(evalution==PE_AWESOME)
+      snprintf(buf, BUFFER_SIZE, "awesome !!!");
+    setColor(win_title, CLR_DEFAULT);
+    mvwprintw(win_title, 1, WIN_TITLE_WIDTH-strlen(buf)-14, "Last play was ");
+    wattron(win_title, A_BOLD);
+    mvwprintw(win_title, 1, WIN_TITLE_WIDTH-strlen(buf), buf);
+    wattroff(win_title, A_BOLD);
+  }
   
   setColor(win_title, CLR_DEFAULT);
   snprintf(buf, BUFFER_SIZE, "lines:");
@@ -166,7 +187,7 @@ static void drawPointsOnGrid(Point* points, int length, Point cursor, Point sele
 
 static void cleanGrid() {
   setColor(win_grid, CLR_DEFAULT);
-  int i, wLength = GRAPHIC_CASE_W*GRID_SIZE-2, hLength = GRAPHIC_CASE_H*GRID_SIZE-1;
+  int i, wLength = GRAPHIC_CASE_W*GRID_SIZE, hLength = GRAPHIC_CASE_H*GRID_SIZE+1;
   for(i=1; i<hLength; ++i)
     mvwhline(win_grid, i, 1, ' ', wLength);
 }
@@ -180,7 +201,8 @@ extern void ui_updateGrid(Game* game) {
   Point p;
   Grid* grid = game_getGrid(game);
   int length, i, j;
-  Line *lines;
+  Line *lines, possibleLinesForSelect[8*LINE_LENGTH];
+  int nlinesForSelect;
   int displayPossibilities = game_mustDisplayPossibilities(game);
   int possibilitiesOnHover = point_exists(game_getSelect(game));
   
@@ -203,9 +225,11 @@ extern void ui_updateGrid(Game* game) {
         points[npoints++] = p;
   drawPointsOnGrid(points, npoints, grid->cursor, grid->select, 'o', CLR_CASE_SELECTED, CLR_CASE);
   
-  if(point_indexOf(points, npoints, grid->cursor)==-1) {
+  if(!point_equals(grid->cursor, grid->select) && point_indexOf(points, npoints, grid->cursor)==-1) {
     wattron(win_grid, A_REVERSE);
+    setColor(win_grid, CLR_CASE);
     drawPoint(grid->cursor, ' ');
+    wattroff(win_grid, A_REVERSE);
   }
   if(point_indexOf(points, npoints, grid->select)==-1) {
     setColor(win_grid, CLR_CASE_EMPTY_SELECTED);
@@ -218,6 +242,7 @@ extern void ui_updateGrid(Game* game) {
       setColor(win_grid, CLR_LINES_PLAYABLE);
       drawLines(lines, length);
     }
+    
     npoints = 0;
     for(i=0; i<length; ++i) {
       for(j=0; j<LINE_LENGTH; ++j) {
@@ -227,6 +252,26 @@ extern void ui_updateGrid(Game* game) {
       }
     }
     drawPointsOnGrid(points, npoints, grid->cursor, grid->select, '*', CLR_CASE_SELECTED, CLR_LINES_PLAYABLE);
+  
+    
+    if(point_exists(grid->select)) {
+      nlinesForSelect = 0;
+      npoints = 0;
+      for(i=0; i<length && nlinesForSelect<8*LINE_LENGTH; ++i)
+        if(line_pointAtExtremity(lines[i], grid->select)) {
+          possibleLinesForSelect[nlinesForSelect++] = lines[i];
+          for(j=0; j<LINE_LENGTH; ++j) {
+            p = lines[i].points[j];
+            if(!game_isOccupied(game, p) && point_indexOf(points, npoints, p)==-1)
+              points[npoints++] = p;
+          }
+        }
+      wattron(win_grid, A_BOLD);
+      drawLines(possibleLinesForSelect, nlinesForSelect);
+      drawPointsOnGrid(points, npoints, grid->cursor, grid->select, '*', CLR_CASE_SELECTED, CLR_LINES_PLAYABLE);
+      wattroff(win_grid, A_BOLD);
+    }
+    
   }
   
   wattroff(win_grid, A_REVERSE);

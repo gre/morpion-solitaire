@@ -23,24 +23,35 @@ static GameEndStatus runGame(Game* game);
 
 static void printHelp(char* argv0) {
   printf("  -----------------------\n");
-  printf("  -- Morpion Solitaire --  2010 -- Gaetan Renaudeau\n");
+  printf("  -- Morpion Solitaire --\n");
   printf("  -----------------------\n");
   printf("\n");
   
-  printf("Start a new game :\n");
+  printf("Start a new game:\n");
   printf("       %s --new {nickname}\n", argv0);
   printf("       %s  -n {nickname}\n", argv0);
   printf("\n");
   
-  printf("Restore a game :\n");
+  printf("Restore a game:\n");
   printf("       %s --load {game file}\n", argv0);
   printf("       %s  -l {game file}\n", argv0);
   printf("\n");
 
-  printf("Options:\n");
-  printf("  --highscores\t\tshow highscores\n");
-  printf("  --help, -h\t\tdisplay this help\n");
+  printf("Show highscores:\n");
+  printf("       %s --highscores\n", argv0);
   printf("\n");
+  
+  printf("Displaying this help:\n");
+  printf("       %s --help\n", argv0);
+  printf("       %s -h\n", argv0);
+  printf("\n");
+  
+  printf("How to play the game:\n");
+  printf(" * Move your cursor \tArrows or ZSQD keys\n");
+  printf(" * Do an action \tSpace or Enter key\n");
+  printf(" * Quit the game \tEscape then Y key\n");
+  printf(" * Toggle the help \tH key\n");
+  printf(" * Undo last play \tBackspace key\n");
 }
 
 int main(int argc, char* argv[]) {
