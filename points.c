@@ -1,5 +1,6 @@
 #include "points.h"
 #include "utils.h"
+#include "globals.h"
 
 static Point noPoint = {-1, -1};
 

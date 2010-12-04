@@ -7,6 +7,17 @@
 
 #define HIGHSCORES_PATH "highscores"
 
+static void initHighscoreFile() {
+  Highscore hs[10];
+  int i;
+  for(i=0; i<10; ++i) {
+    strcpy(hs[i].nickname, "Computer");
+    hs[i].score = (i+1)*10;
+  }
+  highscore_sort(hs, 10);
+  highscore_store(hs, 10);
+}
+
 static int comparHighscore(const void* a, const void* b) {
   return ((Highscore*)b)->score - ((Highscore*)a)->score;
 }
@@ -23,6 +34,10 @@ extern int highscore_retrieve(Highscore* highscores, int max) {
   int length = 0;
   Highscore highscore;
   FILE* file = fopen(HIGHSCORES_PATH, "r");
+  if(file==NULL) {
+    initHighscoreFile();
+    file = fopen(HIGHSCORES_PATH, "r");
+  }
   if(file!=NULL) {
     while(length<max && fscanf(file, "%d %" NICKNAME_LENGTH_STR "s", &(highscore.score), highscore.nickname)==2)
       highscores[length++] = highscore;

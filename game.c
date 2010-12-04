@@ -16,7 +16,8 @@
 
 static int game_moveCursorForAction(Action action, Point* cursor);
 static int game_computeAllPossibilities(Game* game);
-
+static int game_saveScore(Game* game);
+static void game_addLine(Game* game, Line l);
 
 struct _Game {
   Line* lines;
@@ -38,7 +39,6 @@ struct _Game {
   PlayEvaluation lastPlayEvalution;
 };
 
-
 extern Game* game_init() {
   Game* game = malloc(sizeof(Game));
   game->lines = 0;
@@ -53,6 +53,7 @@ extern Game* game_init() {
   game_computeAllPossibilities(game);
   return game;
 }
+
 extern void game_close(Game* game) {
   if(game->lines)
     free(game->lines);
@@ -149,15 +150,14 @@ extern void game_beforeAction(Game* game) {
   ui_printInfos(game);
   ui_refresh();
 }
-extern void game_onAction(Game* game, Action action, int* quitRequest) {
+
+extern int game_onAction(Game* game, Action action) {
   Point cursor, select;
   if(action==Action_CANCEL && !point_exists(game_getSelect(game))) {
     ui_printMessage_info("Quit? Oh really? [y/n]");
-    *quitRequest = TRUE;
+    return TRUE;
   }
   else {
-    *quitRequest = FALSE;
-    ui_cleanMessage();
     if(!point_exists(select))
       ui_printMessage_info("Select the endpoint of the line by pressing <enter> or <space>");
     else
@@ -170,14 +170,14 @@ extern void game_onAction(Game* game, Action action, int* quitRequest) {
     else if(action==Action_UNDO && game_getLinesCount(game)>0)
       game_onActionUndo(game);
     else if(action==Action_TOGGLE_HELP)
-      game_toggleMode(game);
+      game_setMode(game, game_getMode(game) == GM_VISUAL ? GM_SOBER : GM_VISUAL); // toggle mode
     else if(action==Action_VALID)
       game_onActionValid(game);
     else if(action==Action_CANCEL)
       game_setSelect(game, point_empty());
+    return FALSE;
   }
 }
-
 
 static int game_moveCursorForAction(Action action, Point* cursor) {
   if(action==Action_LEFT && cursor->x>0) {
@@ -241,9 +241,11 @@ static int game_computeAllPossibilities(Game* game) {
   }
   return game->possibilities_length = possibilities;
 }
+
 extern int game_getPossibilitiesNumber(Game* game) {
   return game->possibilities_length;
 }
+
 extern Line* game_getAllPossibilities(Game* game, int* length) {
   *length = game->possibilities_length;
   return game->possibilities;
@@ -252,12 +254,15 @@ extern Line* game_getAllPossibilities(Game* game, int* length) {
 extern Point game_getCursor(Game* game) {
   return game->grid.cursor;
 }
+
 extern void game_setCursor(Game* game, Point p) {
   game->grid.cursor = p;
 }
+
 extern int game_isOccupied(Game* game, Point p) {
   return game->grid.grid[p.x][p.y] != CASE_EMPTY;
 }
+
 extern void game_occupyCase(Game* game, Point p) {
   game->grid.grid[p.x][p.y] = CASE_OCCUPIED;
 }
@@ -269,6 +274,7 @@ extern int game_getScore(Game* game) {
 extern void game_setSelect(Game* game, Point p) {
   game->grid.select = p;
 }
+
 extern Point game_getSelect(Game* game) {
   return game->grid.select;
 }
@@ -276,12 +282,15 @@ extern Point game_getSelect(Game* game) {
 extern void game_setNickname(Game* game, char* nickname) {
   game->nickname = nickname;
 }
+
 extern char* game_getNickname(Game* game) {
   return game->nickname;
 }
+
 extern void game_setFilepath(Game* game, char* filepath) {
   game->filepath = filepath;
 }
+
 extern char* game_getFilepath(Game* game) {
   return game->filepath;
 }
@@ -293,21 +302,14 @@ extern int game_getLinesCount(Game* game) {
 extern GameMode game_getMode(Game* game) {
   return game->mode;
 }
+
 extern void game_setMode(Game* game, GameMode mode) {
   game->mode = mode;
-}
-
-extern GameMode game_toggleMode(Game* game) {
-  switch(game->mode) {
-    case GM_SOBER: return game->mode = GM_VISUAL;
-    default: return game->mode = GM_SOBER;
-  }
 }
 
 extern PlayEvaluation game_getLastPlayEvaluation(Game* game) {
   return game->lastPlayEvalution;
 }
-
 
 extern int game_mustDisplayPossibilities(Game* game) {
   return game->mode!=GM_SOBER;
@@ -317,7 +319,8 @@ extern Line* game_getLines(Game* game, int* length) {
   *length = game->nlines;
   return game->lines;
 }
-extern void game_addLine(Game* game, Line l) {
+
+static void game_addLine(Game* game, Line l) {
   if(game->nlines==game->lines_current_max) {
     game->lines_current_max += LINES_ALLOC_WINDOW;
     game->lines = game->lines==0 ? malloc(sizeof(Line)*game->lines_current_max) : realloc(game->lines, sizeof(Line)*game->lines_current_max);
@@ -345,12 +348,14 @@ extern void game_recomputeGrid(Game* game) {
   }
   free(lines);
 }
+
 extern void game_undoLine(Game* game) {
   Point cursor = game->grid.cursor;
   game->nlines = MAX(game->nlines-1, 0);
   game_recomputeGrid(game);
   game->grid.cursor = cursor;
 }
+
 extern void game_consumeLine(Game* game, Line line) {
   int i;
   int count = game_countOccupiedCases(game, line);
@@ -360,7 +365,7 @@ extern void game_consumeLine(Game* game, Line line) {
   game_addLine(game, line);
 }
 
-extern int game_saveScore(Game* game) {
+static int game_saveScore(Game* game) {
   int rank = 0;
   Highscore highscores[HIGHSCORE_MAX];
   Highscore highscore;

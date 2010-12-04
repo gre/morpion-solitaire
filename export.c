@@ -7,6 +7,7 @@
 
 #include "export.h"
 #include "game.h"
+#include "globals.h"
 
 #define SAVE_DIR "saved/"
 #define SAVE_FILE_EXTENSION "sav"
@@ -22,6 +23,26 @@ static char* ie_guessNicknameFromFilepath(char* filepath) {
   strncpy(nickname, filepath+start, end-start);
   nickname[end-start] = 0;
   return nickname;
+}
+
+extern int ie_getAvailableFile(char* nickname, char* store) {
+  FILE* f;
+  int i;
+  char buf[FILENAME_BUFFER_SIZE];
+  struct stat st;
+  if(stat(SAVE_DIR, &st) != 0)
+    mkdir(SAVE_DIR, 0700); // create save directory if not exists
+  for(i=1; i<100; ++i) {
+    snprintf(buf, FILENAME_BUFFER_SIZE, "%s%s.%02d.%s", SAVE_DIR, nickname, i, SAVE_FILE_EXTENSION);
+    f = fopen(buf, "r");
+    if(f==NULL) { // file not exists
+      strcpy(store, buf);
+      return 0;
+    }
+    else
+      fclose(f);
+  }
+  return 1;
 }
 
 extern int ie_exportGame(Game* game) {
@@ -61,24 +82,3 @@ extern int ie_removeGame(Game* game) {
   return remove(game_getFilepath(game));
 }
 
-extern int ie_getAvailableFile(char* nickname, char* store) {
-  FILE* f;
-  int i;
-  char buf[FILENAME_BUFFER_SIZE];
-  
-  struct stat st;
-  if(stat(SAVE_DIR, &st) != 0)
-    mkdir(SAVE_DIR, 0700); // create save directory if not exists
-  
-  for(i=1; i<100; ++i) {
-    snprintf(buf, FILENAME_BUFFER_SIZE, "%s%s.%02d.%s", SAVE_DIR, nickname, i, SAVE_FILE_EXTENSION);
-    f = fopen(buf, "r");
-    if(f==NULL) { // file not exists
-      strcpy(store, buf);
-      return 0;
-    }
-    else
-      fclose(f);
-  }
-  return 1;
-}

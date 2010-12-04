@@ -8,11 +8,6 @@
 #include "export.h"
 #include "highscore.h"
 
-/**
- * TODO: impl help mode : on case play hover display playable other case
- * TODO: proper error message on limit case
- */
-
 typedef enum {
   GES_NONE, GES_ERROR_ONLOAD, GES_FINISHED, GES_INTERRUPT
 } GameEndStatus;
@@ -132,7 +127,7 @@ static GameEndStatus runGame(Game* game) {
     if(action==Action_YES && quitRequest)
       end = TRUE;
     else
-      game_onAction(game, action, &quitRequest);
+      quitRequest = game_onAction(game, action);
   } while(!end && game_getPossibilitiesNumber(game)>0);
   game_onStop(game);
   return game_getPossibilitiesNumber(game)==0 ? GES_FINISHED : GES_INTERRUPT;

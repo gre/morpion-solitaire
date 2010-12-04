@@ -1,5 +1,9 @@
 #ifndef _GLOBALS_H
 #define _GLOBALS_H
+/**
+ * Globals constants used by almost all game modules
+ * @author Gaetan Renaudeau <pro@grenlibre.fr>
+ */
 
 #define GRID_SIZE 18
 #define LINE_LENGTH 5

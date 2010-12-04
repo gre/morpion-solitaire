@@ -2,39 +2,55 @@
 #define _UI_H
 /**
  * User Interface module
+ * 
+ * @author Gaetan Renaudeau <pro@grenlibre.fr>
  */
 #include "game.h"
 
-
 /**
- * TODO : some complexe algorithm must be move into others modules (game or other ?)
- * TODO : organize extern functions
+ * Init the User Interface
  */
+extern void ui_init();
 
 /**
- * Blocking function.
+ * Close the User Interface
+ */
+extern void ui_close();
+
+/**
+ * Refresh the User Interface
+ */
+extern void ui_refresh();
+
+/**
  * Wait for a key and return result
- * @return :
- *  the getted ACTION
+ * Blocking function.
+ * @return : the getted Action ( @see game.h )
  */
 extern Action ui_getAction();
 
+/**
+ * Print infos of current game state
+ * @param game : the current game object
+ */
 extern void ui_printInfos(Game* game);
 
-extern void ui_refresh();
 
+/**
+ * Print the grid for current game state
+ * @param game : the current game object
+ */
+extern void ui_updateGrid(Game*);
+
+/**
+ * _info, _error and _success ui_printMessage functions 
+ * display a message with 3 kind of mode (different colors)
+ * @param str : the string to display
+ */
 extern void ui_printMessage_info(char* str);
 extern void ui_printMessage_error(char* str);
 extern void ui_printMessage_success(char* str);
 
-extern void ui_init();
-
-extern void ui_close();
-
-extern void ui_updateGrid(Game*);
-
-extern void ui_confirmExit();
-extern void ui_cleanMessage();
 
 
 #endif

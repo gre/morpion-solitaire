@@ -4,6 +4,9 @@
  * Utils module
  */
 
+/**
+ * absolute value for integer
+ */
 int util_abs(int);
 
 /**
@@ -11,7 +14,16 @@ int util_abs(int);
  * @return the trimed string
  */
 extern char* str_trim(char *s);
+
+/**
+ * Truncate a string str by a maximum length
+ */
 extern void str_truncate(char* str, int length);
+
+/**
+ * Format a string str with only alphanumeric 
+ * by replacing all others characters by underscores
+ */
 extern void str_formatOnlyAlphaAndUnderscore(char* str);
 
 /// Args utils ///
