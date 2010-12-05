@@ -235,9 +235,10 @@ extern void ui_printInfos(Game* game) {
   mvwhline(win_title, 0, 1, ' ', WIN_TITLE_WIDTH);
   mvwhline(win_title, 1, 1, ' ', WIN_TITLE_WIDTH);
   
-  if(saved) {
+  char * filepath = game_getFilepath(game);
+  if(saved && filepath) {
     setColor(win_title, CLR_BLUE);
-    snprintf(buf, BUFFER_SIZE, "save: %s", game_getFilepath(game));
+    snprintf(buf, BUFFER_SIZE, "save: %s", filepath);
     x = (WIN_TITLE_WIDTH-strlen(buf))/2;
     mvwprintw(win_title, 0, x, buf);
   }
@@ -294,6 +295,9 @@ extern void ui_updateGrid(Game* game) {
   int npoints;
   
   Point p;
+  Grid baseGrid;
+  game_initGrid(&baseGrid);
+  
   Grid* grid = game_getGrid(game);
   int length, i, j;
   Line *lines, possibleLinesForSelect[8*LINE_LENGTH];
@@ -318,7 +322,7 @@ extern void ui_updateGrid(Game* game) {
     for(p.x=0; p.x<GRID_SIZE; ++p.x)
       if(game_isOccupied(game, p))
         points[npoints++] = p;
-  drawPointsOnGrid(points, npoints, grid->cursor, grid->select, 'o', CLR_CASE_SELECTED, CLR_CASE);
+  drawPointsOnGrid(points, npoints, grid->cursor, grid->select, 'o', CLR_CASE_SELECTED, CLR_LINES);
   
   if(!point_equals(grid->cursor, grid->select) && point_indexOf(points, npoints, grid->cursor)==-1) {
     wattron(win_grid, A_REVERSE);
@@ -330,6 +334,14 @@ extern void ui_updateGrid(Game* game) {
     setColor(win_grid, CLR_CASE_EMPTY_SELECTED);
     drawPoint(grid->select, ' ');
   }
+  
+  npoints = 0;
+  for(p.y=0; p.y<GRID_SIZE; ++p.y)
+    for(p.x=0; p.x<GRID_SIZE; ++p.x)
+      if(baseGrid.grid[p.x][p.y]==CASE_OCCUPIED)
+        points[npoints++] = p;
+  drawPointsOnGrid(points, npoints, grid->cursor, grid->select, 'o', CLR_CASE_SELECTED, CLR_CASE);
+  
   
   if(displayPossibilities) {
     lines = game_getAllPossibilities(game, &length);

@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <time.h>
 
 #include "globals.h"
 #include "utils.h"
@@ -15,10 +17,11 @@ typedef enum {
 static GameEndStatus loadGame(char* filepath);
 static GameEndStatus newGame(char* nickname);
 static GameEndStatus runGame(Game* game);
+static void demo();
 
 static void printHelp(char* argv0) {
   printf("  -----------------------\n");
-  printf("  -- Morpion Solitaire --\n");
+  printf("  >- Morpion Solitaire -<\n");
   printf("  -----------------------\n");
   printf("\n");
   
@@ -27,16 +30,22 @@ static void printHelp(char* argv0) {
   printf("       %s  -n {nickname}\n", argv0);
   printf("\n");
   
-  printf("Restore a game:\n");
+  printf("Restore* a game:\n");
   printf("       %s --load {game file}\n", argv0);
   printf("       %s  -l {game file}\n", argv0);
+  printf("* note that games are saved into the saved/ directory.\n");
   printf("\n");
 
   printf("Show highscores:\n");
   printf("       %s --highscores\n", argv0);
   printf("\n");
   
-  printf("Displaying this help:\n");
+  printf("Start a random game demo:\n");
+  printf("       %s --demo\n", argv0);
+  printf("       %s -d\n", argv0);
+  printf("\n");
+  
+  printf("Display this help:\n");
   printf("       %s --help\n", argv0);
   printf("       %s -h\n", argv0);
   printf("\n");
@@ -48,14 +57,13 @@ static void printHelp(char* argv0) {
   printf(" * Toggle the help \tH key\n");
   printf(" * Undo last play \tBackspace key\n");
 }
-
 int main(int argc, char* argv[]) {
+  
   GameEndStatus status = GES_NONE;
   char* str = 0;
   Highscore highscores[HIGHSCORE_MAX];
   if(util_containsArg(argc, argv, "--help") || util_containsArg(argc, argv, "-h")) {
     printHelp(argv[0]);
-    return 0;
   }
   else if(util_getArgString(argc, argv, "--new", &str)==0 || util_getArgString(argc, argv, "-n", &str)==0) {
     ui_init();
@@ -70,13 +78,17 @@ int main(int argc, char* argv[]) {
   else if(util_containsArg(argc, argv, "--highscores")) {
     highscore_retrieve(highscores, HIGHSCORE_MAX);
     highscore_print(highscores, HIGHSCORE_MAX);
-    return 0;
+  }
+  else if(util_containsArg(argc, argv, "--demo") || util_containsArg(argc, argv, "-d")) {
+    ui_init();
+    demo();
+    ui_close();
   }
   else {
     printf("\tUsage: %s --new {nickname}\n", argv[0]);
     printf("\tUsage: %s --load {game file}\n", argv[0]);
+    printf("\t...\n");
     printf("More infos with %s --help\n", argv[0]);
-    return 0;
   }
   
   if(status==GES_ERROR_ONLOAD) {
@@ -132,3 +144,73 @@ static GameEndStatus runGame(Game* game) {
   game_onStop(game);
   return game_getPossibilitiesNumber(game)==0 ? GES_FINISHED : GES_INTERRUPT;
 }
+
+/**
+ * Random demo
+ */
+static void demo() {
+  Action action;
+  Game* game;
+  game = game_init();
+  int r;
+  int length;
+  int end = FALSE;
+  Line* lines;
+  srand(time(NULL));
+  game_setCursor(game, point_empty());
+  game_setNickname(game, "this is a random demo");
+  ui_printMessage_info("Press any key to continue...");
+  do {
+    ui_printInfos(game);
+    ui_updateGrid(game);
+    ui_refresh();
+    action = ui_getAction();
+    if(action==Action_CANCEL)
+      end = TRUE;
+    else if(action==Action_TOGGLE_HELP)
+      game_setMode(game, game_getMode(game)==GM_SOBER ? GM_VISUAL : GM_SOBER);
+    else {
+      game_computeAllPossibilities(game);
+      lines = game_getAllPossibilities(game, &length);
+      if(length>0) {
+        r = rand()%length;
+        game_consumeLine(game, lines[r]);
+      }
+    }
+  } while(!end && game_getPossibilitiesNumber(game)>0);
+  if(!end) {
+    ui_printMessage_success("Demo has finished to play. Press <ESC> to quit.");
+    ui_refresh();
+    while(ui_getAction()!=Action_CANCEL);
+  }
+  game_close(game);
+}
+
+/*
+ // Bonus function to bruteforce best score // seems to be 76
+static void findBestScore(int try) {
+  int best = 0, score;
+  while(try-->0) {
+    Game* game;
+    game = game_init();
+    int r;
+    int length;
+    Line* lines;
+    srand(time(NULL));
+    game_setCursor(game, point_empty());
+    do {
+      game_computeAllPossibilities(game);
+      lines = game_getAllPossibilities(game, &length);
+      if(length>0) {
+        r = rand()%length;
+        game_consumeLine(game, lines[r]);
+      }
+    } while(game_getPossibilitiesNumber(game)>0);
+    score = game_getScore(game);
+    game_close(game);
+    if(score>best)
+      best = score;
+  }
+  printf("best score found: %d\n", best);
+}
+*/

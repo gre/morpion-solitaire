@@ -1,6 +1,6 @@
 .PHONY: clean
 
-DEBUG = -Wall -Wextra -g
+DEBUG = -Wall -g
 OPT = ${DEBUG}
 
 all: clean morpion

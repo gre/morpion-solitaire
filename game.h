@@ -186,6 +186,12 @@ extern int game_getPossibilitiesNumber(Game* game);
 extern Line* game_getAllPossibilities(Game* game, int* length);
 
 /**
+ * Recompute all line possibilities
+ * @return line possibilities length
+ */
+extern int game_computeAllPossibilities(Game* game);
+
+/**
  * Check if the UI must display line possibilities
  * @return true if UI must display line possibilities
  */

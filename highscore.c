@@ -12,7 +12,7 @@ static void initHighscoreFile() {
   int i;
   for(i=0; i<10; ++i) {
     strcpy(hs[i].nickname, "Computer");
-    hs[i].score = (i+1)*10;
+    hs[i].score = (i+1)*5+20;
   }
   highscore_sort(hs, 10);
   highscore_store(hs, 10);

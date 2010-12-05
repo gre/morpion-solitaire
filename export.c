@@ -72,6 +72,9 @@ extern int ie_importGame(char* filepath, Game* game) {
       line.points[j].x = points[2*j];
       line.points[j].y = points[2*j+1];
     }
+    for(j=0; j<LINE_LENGTH; ++j)
+      if(!point_exists(line.points[j]))
+        return 2;
     game_consumeLine(game, line);
   }
   fclose(file);

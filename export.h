@@ -31,7 +31,7 @@ extern int ie_exportGame(Game* game);
  * Import a game from a file
  * @param filepath: the filepath of the saved game
  * @param game: the game instance to import into
- * @return 0 if success, 1 if error
+ * @return 0 if success, 1 if file error, 2 if invalid data
  */
 extern int ie_importGame(char* filepath, Game* game);
 

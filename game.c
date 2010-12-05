@@ -15,7 +15,6 @@
 #define LINES_ALLOC_WINDOW 10
 
 static int game_moveCursorForAction(Action action, Point* cursor);
-static int game_computeAllPossibilities(Game* game);
 static int game_saveScore(Game* game);
 static void game_addLine(Game* game, Line l);
 
@@ -211,7 +210,7 @@ extern int game_countOccupiedCases(Game* game, Line line) {
   return count;
 }
 
-static int game_computeAllPossibilities(Game* game) {
+extern int game_computeAllPossibilities(Game* game) {
   Line* lines = game->possibilities;
   Line line;
   int possibilities = 0;
