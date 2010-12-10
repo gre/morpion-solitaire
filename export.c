@@ -50,14 +50,14 @@ extern int ie_exportGame(Game* game) {
   if(file==NULL) return 1;
   int length, i, j;
   Line line, *lines = game_getLines(game, &length);
-  int points[2*LINE_LENGTH];
   for(i=0; i<length; ++i) {
     line = lines[i];
     for(j=0; j<LINE_LENGTH; ++j) {
-      points[2*j] = line.points[j].x;
-      points[2*j+1] = line.points[j].y;
+      fprintf(file, "%d %d", line.points[j].x, line.points[j].y);
+      if(j<LINE_LENGTH-1)
+        fprintf(file, " ");
     }
-    fwrite(points, sizeof(int), 2*LINE_LENGTH, file);
+    fprintf(file, "\n");
   }
   fclose(file);
   return 0;
@@ -66,17 +66,23 @@ extern int ie_importGame(char* filepath, Game* game) {
   FILE* file = fopen(filepath, "r");
   if(file==NULL) return 1;
   Line line;
-  int j, points[2*LINE_LENGTH];
-  while(fread(&points, sizeof(int), 2*LINE_LENGTH, file) == 2*LINE_LENGTH) {
-    for(j=0; j<LINE_LENGTH; ++j) {
-      line.points[j].x = points[2*j];
-      line.points[j].y = points[2*j+1];
+  int i, j, length, count;
+  Point p;
+  do {
+    length = 0;
+    for(i=0; i<LINE_LENGTH && (count=fscanf(file, "%d %d", &p.x, &p.y)); ++i) {
+      length += count;
+      line.points[i] = p;
     }
-    for(j=0; j<LINE_LENGTH; ++j)
-      if(!point_exists(line.points[j]))
-        return 2;
-    game_consumeLine(game, line);
-  }
+    if(length==2*LINE_LENGTH) {
+      for(j=0; j<LINE_LENGTH; ++j)
+        if(!point_exists(line.points[j])) {
+          fclose(file);
+          return 2;
+        }
+      game_consumeLine(game, line);
+    }
+  } while(length==2*LINE_LENGTH);
   fclose(file);
   game_setNickname(game, ie_guessNicknameFromFilepath(filepath));
   return 0;
