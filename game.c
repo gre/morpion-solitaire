@@ -381,7 +381,7 @@ static int game_saveScore(Game* game) {
     highscores[rank] = highscore;
   }
   highscore_store(highscores, MIN(HIGHSCORE_MAX, length));
-  return rank>=HIGHSCORE_MAX ? 0 : rank;
+  return rank>=HIGHSCORE_MAX ? 0 : rank+1;
 }
 
 extern void game_initGrid(Grid* grid) {
