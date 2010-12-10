@@ -376,7 +376,7 @@ static int game_saveScore(Game* game) {
     highscores[length!=HIGHSCORE_MAX ? length : length-1] = highscore;
     ++ length;
     highscore_sort(highscores, length);
-    for(rank=length-1; !highscore_equals(&highscores[rank], &highscore) && rank>=0; --rank);
+    for(rank=length-1; rank>=0 && !highscore_equals(&highscores[rank], &highscore); --rank);
     rank ++;
   }
   highscore_store(highscores, MIN(HIGHSCORE_MAX, length));
