@@ -117,10 +117,10 @@ static GameEndStatus loadGame(char* filepath) {
 static GameEndStatus newGame(char* nickname) {
   Game* game;
   char filepath[FILENAME_BUFFER_SIZE];
+  str_formatOnlyAlphaAndUnderscore(nickname);
   if(ie_getAvailableFile(nickname, filepath)!=0)
     return GES_ERROR_ONLOAD;
   game = game_init();
-  str_formatOnlyAlphaAndUnderscore(nickname);
   str_truncate(nickname, NICKNAME_LENGTH);
   game_setNickname(game, nickname);
   game_setFilepath(game, filepath);
