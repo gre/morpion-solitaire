@@ -365,22 +365,23 @@ extern void game_consumeLine(Game* game, Line line) {
 }
 
 static int game_saveScore(Game* game) {
-  int rank = 0;
+  int rank, i;
   Highscore highscores[HIGHSCORE_MAX];
   Highscore highscore;
   highscore.score = game_getScore(game);
   strncpy(highscore.nickname, game_getNickname(game), NICKNAME_LENGTH);
   int length = highscore_retrieve(highscores, HIGHSCORE_MAX);
   highscore_sort(highscores, length);
-  if(length!=HIGHSCORE_MAX || highscores[length-1].score < highscore.score) {
-    highscores[length!=HIGHSCORE_MAX ? length : length-1] = highscore;
-    ++ length;
-    highscore_sort(highscores, length);
-    for(rank=length-1; rank>=0 && !highscore_equals(&highscores[rank], &highscore); --rank);
-    rank ++;
+  for(rank=0; rank<length && (highscores[rank].score>highscore.score || highscore_equals(&highscore, &highscores[rank])); ++rank);
+  if(rank<length) {
+    if(length<HIGHSCORE_MAX-1)
+      ++ length;
+    for(i=length-1; i>rank; --i)
+      highscores[i] = highscores[i-1];
+    highscores[rank] = highscore;
   }
   highscore_store(highscores, MIN(HIGHSCORE_MAX, length));
-  return rank;
+  return rank>=HIGHSCORE_MAX ? 0 : rank;
 }
 
 extern void game_initGrid(Grid* grid) {
